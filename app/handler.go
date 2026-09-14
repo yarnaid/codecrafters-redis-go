@@ -8,6 +8,7 @@ import (
 
 	"github.com/codecrafters-io/redis-starter-go/app/commands"
 	"github.com/codecrafters-io/redis-starter-go/app/parser"
+	"github.com/codecrafters-io/redis-starter-go/app/storage"
 )
 
 const BUFFER_SIZE = 512
@@ -20,6 +21,7 @@ type RW interface {
 
 type Handler struct {
 	conn RW
+	strg *storage.Storage
 }
 
 func (h *Handler) SetConn(conn RW) {
@@ -62,7 +64,7 @@ func (h *Handler) process_command(buf []byte) {
 		h.send_error_response(msg, err)
 		return
 	}
-	command, err := commands.FromInput(command_arr)
+	command, err := commands.FromInput(command_arr, h.strg)
 	if err != nil {
 		logger.Error("Error parsing command", "error", err.Error())
 		h.send_error_response("Error parsing command", err)

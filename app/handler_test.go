@@ -5,6 +5,7 @@ import (
 
 	"net"
 
+	"github.com/codecrafters-io/redis-starter-go/app/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,13 +19,17 @@ func TestHandler(t *testing.T) {
 		{"ping", []byte("*1\r\n$4\r\nPING\r\n"), []byte("+PONG\r\n")},
 		{"echo", []byte("*2\r\n$4\r\nECHO\r\n$11\r\nhello world\r\n"), []byte("$11\r\nhello world\r\n")},
 		{"echo", []byte("*2\r\n$4\r\nECHO\r\n$9\r\npineapple\r\n"), []byte("$9\r\npineapple\r\n")},
+		{"set", []byte("*3\r\n$3\r\nSET\r\n$3\r\nKEY\r\n$3\r\n123\r\n"), []byte("+OK\r\n")},
+		// {"get", []byte("*2\r\n$3\r\nGET\r\n$3\r\nKEY\r\n"), []byte("-\r\npineapple\r\n")},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client, server := net.Pipe()
-			handler := Handler{}
-			handler.SetConn(server)
+			handler := Handler{
+				conn: server,
+				strg: storage.NewStorage(),
+			}
 			go handler.handle_connection()
 
 			_, err := client.Write(tt.input)

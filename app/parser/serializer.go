@@ -20,6 +20,7 @@ type SimpleString string
 type BulkString string
 type SimpleError string
 type Array[t SC] []t
+type BulkNullString string
 
 func Serialize(val Serializable) ([]byte, error) {
 	return val.Serialize()
@@ -65,4 +66,8 @@ func (a *Array[T]) Equal(other *Array[T]) bool {
 		}
 	}
 	return true
+}
+
+func (b BulkNullString) Serialize() ([]byte, error) {
+	return []byte("$-1\r\n"), nil
 }

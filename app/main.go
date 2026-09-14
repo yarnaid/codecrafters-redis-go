@@ -3,6 +3,8 @@ package main
 import (
 	"net"
 	"os"
+
+	"github.com/codecrafters-io/redis-starter-go/app/storage"
 )
 
 // Ensures gofmt doesn't remove the "net" and "os" imports in stage 1 (feel free to remove this!)
@@ -16,6 +18,7 @@ var cfg = Config{
 
 func main() {
 	logger.Info("Logs from your program will appear here!")
+	var strg = storage.NewStorage()
 
 	l, err := net.Listen("tcp", cfg.address+":"+cfg.port)
 	if err != nil {
@@ -28,7 +31,7 @@ func main() {
 			logger.Error("Error accepting connection", "error", err.Error())
 			os.Exit(1)
 		}
-		handler := Handler{conn: conn}
+		handler := Handler{conn: conn, strg: strg}
 		go handler.handle_connection()
 	}
 }
