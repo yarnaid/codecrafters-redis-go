@@ -9,20 +9,6 @@ import (
 var _ = net.Listen
 var _ = os.Exit
 
-func handle_connection(conn net.Conn) {
-	defer func() {
-		conn.Close()
-		logger.Debug("Connection closed")
-	}()
-
-	_, err := conn.Write([]byte(fmt_response("PONG")))
-	if err != nil {
-		logger.Error("Error writing response", "error", err.Error())
-	}
-
-	logger.Info("Handling new connection...")
-}
-
 var cfg = Config{
 	address: "0.0.0.0",
 	port:    "6379",
@@ -42,6 +28,7 @@ func main() {
 			logger.Error("Error accepting connection", "error", err.Error())
 			os.Exit(1)
 		}
-		go handle_connection(conn)
+		handler := Handler{conn: conn}
+		go handler.handle_connection()
 	}
 }
