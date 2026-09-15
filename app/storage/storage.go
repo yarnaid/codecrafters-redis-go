@@ -95,10 +95,21 @@ func (s *Storage) LRange(key string, start, end int) parser.Array[parser.Seriali
 		return parser.Array[parser.Serializable]{}
 	}
 	var res parser.Array[parser.Serializable]
-	end = min(len(arr)-1, end)
+	if end >= 0 {
+		end = min(len(arr)-1, end)
+	}
+	start, end = invert_index(start, len(arr)), invert_index(end, len(arr))
 	for _, v := range arr[start : end+1] {
 		res = append(res, parser.ToSerializable(v))
 	}
 	// slog.Debug("[Storage][LRange] returning", "res", res, "start", start, "end", end, "orig", arr)
 	return res
+}
+
+func invert_index(i, ln int) int {
+	if i >= 0 {
+		return i
+	} else {
+		return max(ln+i, 0)
+	}
 }
