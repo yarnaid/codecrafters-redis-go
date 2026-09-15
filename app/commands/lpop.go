@@ -8,11 +8,17 @@ import (
 type LPop struct {
 	S   *storage.Storage
 	Key string
+	N   int
 }
 
 func (l LPop) Execute() (parser.Serializable, error) {
-	v, err := l.S.LPop(l.Key)
-	vv := parser.ToSerializable(v)
+	v, err := l.S.LPop(l.Key, l.N)
+	var vv parser.Serializable
+	if len(v) == 1 {
+		vv = parser.ToSerializable(v[0])
+	} else {
+		vv = parser.ToSerializable(v)
+	}
 	return vv, err
 }
 

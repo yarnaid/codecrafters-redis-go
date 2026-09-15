@@ -165,7 +165,7 @@ func (s *Storage) LLen(key string) int {
 	return len(arr)
 }
 
-func (s *Storage) LPop(key string) (interface{}, error) {
+func (s *Storage) LPop(key string, n int) ([]interface{}, error) {
 	s.mu.RLock()
 	defer func() {
 		s.mu.RUnlock()
@@ -184,9 +184,14 @@ func (s *Storage) LPop(key string) (interface{}, error) {
 	if len(arr) == 0 {
 		return nil, errors.New("arr is empty")
 	}
-	v := arr[0]
-	copy(arr[:len(arr)-1], arr[1:])
-	arr = arr[:len(arr)-1]
+
+	slog.Debug("[Storage][LPop] input", "arr", arr)
+	nn := min(n, len(arr))
+	v := make([]interface{}, nn)
+	copy(v, arr[:nn])
+	copy(arr[:len(arr)-nn], arr[nn:])
+	arr = arr[:len(arr)-nn]
 	val.Value = arr
+	slog.Debug("[Storage][LPop] return", "res", v, "new_arr", arr)
 	return v, nil
 }

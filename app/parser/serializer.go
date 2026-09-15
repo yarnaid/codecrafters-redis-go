@@ -83,6 +83,12 @@ func ToSerializable(val interface{}) Serializable {
 		return Int(val)
 	case string:
 		return BulkString(val)
+	case []interface{}:
+		var res Array[Serializable]
+		for _, v := range val {
+			res = append(res, ToSerializable(v))
+		}
+		return res
 	default:
 		panic(fmt.Sprintf("Not supported type for serializable: %T; %v", val, val))
 	}
