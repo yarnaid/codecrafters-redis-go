@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"my-redis/app/parser"
 	"my-redis/app/storage"
 
 	"github.com/stretchr/testify/assert"
@@ -79,6 +80,37 @@ func TestStorage_Append(t *testing.T) {
 			res, _ := s.Get(key)
 			res_arr, _ := res.([]interface{})
 			require.Equal(len(tt.values), len(res_arr))
+		})
+	}
+}
+
+func TestStorage_LRange(t *testing.T) {
+	data := parser.Array[parser.Int]{
+		0, 1, 2, 3, 4, 5, 6,
+	}
+	l := len(data)
+	key := "key"
+	tests := []struct {
+		name       string
+		start, end int
+		res        parser.Array[parser.Int]
+	}{
+		{"0, -1", 0, -1, data[:]},
+		{"0, -2", 0, -2, data[:l-1]},
+		{"1, -2", 0, -2, data[1 : l-1]},
+		{"-3, -2", 0, -2, data[l-3 : l-1]},
+	}
+
+	require := require.New(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := storage.NewStorage()
+			slog.Debug("starting filling")
+			for _, v := range data {
+				s.Append(key, v)
+			}
+			slog.Debug("starting test")
+			require.EqualValues(tt.res, s.LRange(key, tt.start, tt.end))
 		})
 	}
 }

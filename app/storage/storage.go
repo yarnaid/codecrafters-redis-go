@@ -74,8 +74,39 @@ func (s *Storage) Append(key string, values ...interface{}) int {
 	}
 	val.Value = append(arr, values...)
 	res_arr, _ := val.Value.([]interface{})
-	slog.Debug("[Storage][Append] len", "len", len(res_arr), "val", res_arr)
+	// slog.Debug("[Storage][Append] len", "len", len(res_arr), "val", res_arr)
 	return len(res_arr)
+}
+
+func (s *Storage) Prepend(key string, values ...interface{}) int {
+	s.mu.Lock()
+	defer func() {
+		s.mu.Unlock()
+	}()
+
+	val, ok := s.data[key]
+	if !ok {
+		slog.Debug("[Storage][Append] no array, creating", "key", key)
+		// slog.Debug("[Storage][Append] current data", "data", s.data)
+		val = &Value{Value: make([]interface{}, 0)}
+		s.data[key] = val
+	}
+	arr, ok := val.Value.([]interface{})
+	if !ok {
+		return 0
+	}
+	val.Value = PrependReversed(arr, values...)
+	res_arr, _ := val.Value.([]interface{})
+	// slog.Debug("[Storage][Append] len", "len", len(res_arr), "val", res_arr)
+	return len(res_arr)
+}
+
+func PrependReversed[T any](s []T, values ...T) []T {
+	result := make([]T, 0, len(values)+len(s))
+	for i := len(values) - 1; i >= 0; i-- {
+		result = append(result, values[i])
+	}
+	return append(result, s...)
 }
 
 func (s *Storage) LRange(key string, start, end int) parser.Array[parser.Serializable] {

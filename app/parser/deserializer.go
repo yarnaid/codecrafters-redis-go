@@ -9,7 +9,7 @@ import (
 )
 
 func Deserialize(data []byte) (interface{}, error) {
-	slog.Info("start deserialization", "data", data)
+	// slog.Info("start deserialization", "data", data)
 	if len(data) == 0 {
 		return nil, errors.New("Empty input data")
 	}
@@ -79,7 +79,6 @@ func deserialize_string(s string) (interface{}, string, error) {
 	default:
 		return nil, s, fmt.Errorf("Invalid input data type ``%s''", s)
 	}
-
 }
 
 func parse_number(input string) (int, string, error) {

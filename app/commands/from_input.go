@@ -51,6 +51,12 @@ func FromInput(input []string, strg *storage.Storage) (Command, error) {
 		}
 		return &RPushCommand{strg, input[1], ToAny(input[2:])}, nil
 
+	case "LPUSH":
+		if len(input) < 3 {
+			return nil, fmt.Errorf("LPUSH requires at least 2 args, %d got", len(input))
+		}
+		return &LPushCommand{strg, input[1], ToAny(input[2:])}, nil
+
 	case "LRANGE":
 		if len(input) != 4 {
 			return nil, fmt.Errorf("LRANGE args format: key, start, end")
