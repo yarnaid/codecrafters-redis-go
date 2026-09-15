@@ -1,4 +1,4 @@
-module github.com/codecrafters-io/redis-starter-go
+module my-redis
 
 go 1.27.0
 

@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"github.com/codecrafters-io/redis-starter-go/app/parser"
+	"my-redis/app/parser"
 )
 
 type Command interface {

@@ -3,23 +3,25 @@ package commands
 import (
 	"fmt"
 
-	"github.com/codecrafters-io/redis-starter-go/app/parser"
-	"github.com/codecrafters-io/redis-starter-go/app/storage"
+	"my-redis/app/parser"
+	"my-redis/app/storage"
 )
 
 type SetCommand struct {
-	strg  *storage.Storage
-	key   string
-	value interface{}
+	Storage *storage.Storage
+	Key     string
+	Value   interface{}
+	TTL_MS  int
 }
 
-func (p *SetCommand) Execute() (parser.Serializable, error) {
-	ok := p.strg.Set(p.key, p.value)
+func (s *SetCommand) Execute() (parser.Serializable, error) {
+	ok := s.Storage.Set(s.Key, s.Value, s.TTL_MS)
 	if !ok {
-		return nil, fmt.Errorf("Cannot set `%v` to key `%v`", p.value, p.key)
+		return nil, fmt.Errorf("Cannot set `%v` to key `%v`", s.Value, s.Key)
 	}
 	return parser.SimpleString("OK"), nil
 }
-func (p *SetCommand) Validate() error {
+
+func (s *SetCommand) Validate() error {
 	return nil
 }

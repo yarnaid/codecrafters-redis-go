@@ -1,7 +1,9 @@
-package parser
+package parser_test
 
 import (
 	"testing"
+
+	. "my-redis/app/parser"
 )
 
 func TestSerialization(t *testing.T) {

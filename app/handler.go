@@ -2,13 +2,12 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"io"
 
-	"fmt"
-
-	"github.com/codecrafters-io/redis-starter-go/app/commands"
-	"github.com/codecrafters-io/redis-starter-go/app/parser"
-	"github.com/codecrafters-io/redis-starter-go/app/storage"
+	"my-redis/app/commands"
+	"my-redis/app/parser"
+	"my-redis/app/storage"
 )
 
 const BUFFER_SIZE = 512
@@ -20,24 +19,24 @@ type RW interface {
 }
 
 type Handler struct {
-	conn RW
-	strg *storage.Storage
+	Conn RW
+	Strg *storage.Storage
 }
 
 func (h *Handler) SetConn(conn RW) {
-	h.conn = conn
+	h.Conn = conn
 }
 
-func (h *Handler) handle_connection() {
+func (h *Handler) HandleConnection() {
 	logger.Info("Handling new connection...")
 	defer func() {
-		h.conn.Close()
+		h.Conn.Close()
 		logger.Debug("Connection closed")
 	}()
 
 	for {
 		var buf [BUFFER_SIZE]byte
-		n, err := h.conn.Read(buf[:])
+		n, err := h.Conn.Read(buf[:])
 		if err != nil {
 			logger.Error("Error reading from connection", "error", err.Error())
 			break
@@ -64,7 +63,7 @@ func (h *Handler) process_command(buf []byte) {
 		h.send_error_response(msg, err)
 		return
 	}
-	command, err := commands.FromInput(command_arr, h.strg)
+	command, err := commands.FromInput(command_arr, h.Strg)
 	if err != nil {
 		logger.Error("Error parsing command", "error", err.Error())
 		h.send_error_response("Error parsing command", err)
@@ -90,13 +89,14 @@ func (h *Handler) send_error_response(message string, err error) {
 }
 
 func (h *Handler) send_response(response parser.Serializable) {
+	logger.Debug("[handler] sending response", "response", response)
 	data, err := response.Serialize()
 	if err != nil {
 		h.send_error_response("Error serializing response", err)
 		return
 	}
 
-	_, err = h.conn.Write(data)
+	_, err = h.Conn.Write(data)
 	if err != nil {
 		logger.Error("Error writing response", "error", err.Error())
 	}
