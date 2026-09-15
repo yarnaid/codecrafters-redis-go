@@ -52,3 +52,21 @@ func (s *Storage) Get(key string) (interface{}, bool) {
 	}
 	return val.Value, true
 }
+
+func (s *Storage) Append(key string, values ...interface{}) int {
+	s.mu.Lock()
+	defer func() {
+		s.mu.Unlock()
+	}()
+
+	val, ok := s.data[key]
+	if !ok {
+		val = &Value{Value: make([]interface{}, 1)}
+	}
+	arr, ok := val.Value.([]interface{})
+	if !ok {
+		return 0
+	}
+	val.Value = append(arr, values)
+	return len(values)
+}

@@ -45,7 +45,21 @@ func FromInput(input []string, strg *storage.Storage) (Command, error) {
 			return nil, fmt.Errorf("SET got wrong args number: %d", len(input))
 		}
 
+	case "RPUSH":
+		if len(input) < 3 {
+			return nil, fmt.Errorf("RPUSH requires at least 2 args, %d got", len(input))
+		}
+		return &RPushCommand{strg, input[1], ToAny(input[2:])}, nil
+
 	default:
 		return nil, errors.New("Unknown command: " + input[0])
 	}
+}
+
+func ToAny[T any](s []T) []any {
+	result := make([]any, len(s))
+	for i, v := range s {
+		result[i] = v
+	}
+	return result
 }
