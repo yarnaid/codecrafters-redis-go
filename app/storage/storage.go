@@ -144,3 +144,22 @@ func invert_index(i, ln int) int {
 		return max(ln+i, 0)
 	}
 }
+
+func (s *Storage) LLen(key string) int {
+	s.mu.RLock()
+	defer func() {
+		s.mu.RUnlock()
+	}()
+
+	val, ok := s.data[key]
+	if !ok {
+		slog.Debug("[Storage][LLen] key not found")
+		return 0
+	}
+	arr, ok := val.Value.([]interface{})
+	if !ok {
+		slog.Debug("[Storage][LRange] key is not array")
+		return 0
+	}
+	return len(arr)
+}

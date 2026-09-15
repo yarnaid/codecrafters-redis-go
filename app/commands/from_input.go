@@ -70,6 +70,12 @@ func FromInput(input []string, strg *storage.Storage) (Command, error) {
 			return nil, err
 		}
 		return &LRangeCommand{strg, input[1], start, end}, nil
+
+	case "LLEN":
+		if len(input) != 2 {
+			return nil, fmt.Errorf("wrong args number %d, must be 1 only", len(input)-1)
+		}
+		return &LLen{strg, input[1]}, nil
 	default:
 		return nil, errors.New("Unknown command: " + input[0])
 	}
