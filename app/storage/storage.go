@@ -4,6 +4,8 @@ import (
 	"log/slog"
 	"sync"
 	"time"
+
+	"my-redis/app/parser"
 )
 
 var _ = slog.Log
@@ -74,4 +76,29 @@ func (s *Storage) Append(key string, values ...interface{}) int {
 	res_arr, _ := val.Value.([]interface{})
 	slog.Debug("[Storage][Append] len", "len", len(res_arr), "val", res_arr)
 	return len(res_arr)
+}
+
+func (s *Storage) LRange(key string, start, end int) parser.Array[parser.Serializable] {
+	s.mu.RLock()
+	defer func() {
+		s.mu.RUnlock()
+	}()
+
+	val, ok := s.data[key]
+	if !ok {
+		slog.Debug("[Storage][LRange] key not found")
+		return parser.Array[parser.Serializable]{}
+	}
+	arr, ok := val.Value.([]interface{})
+	if !ok {
+		slog.Debug("[Storage][LRange] key is not array")
+		return parser.Array[parser.Serializable]{}
+	}
+	var res parser.Array[parser.Serializable]
+	end = min(len(arr)-1, end)
+	for _, v := range arr[start : end+1] {
+		res = append(res, parser.ToSerializable(v))
+	}
+	// slog.Debug("[Storage][LRange] returning", "res", res, "start", start, "end", end, "orig", arr)
+	return res
 }

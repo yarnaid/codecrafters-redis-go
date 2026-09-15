@@ -2,6 +2,7 @@ package parser
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -15,19 +16,23 @@ type SC interface {
 	comparable
 }
 
-type Int int
-type SimpleString string
-type BulkString string
-type SimpleError string
-type Array[t SC] []t
-type BulkNullString string
+type (
+	Int            int
+	SimpleString   string
+	BulkString     string
+	SimpleError    string
+	Array[t SC]    []t
+	BulkNullString string
+)
 
 func Serialize(val Serializable) ([]byte, error) {
 	return val.Serialize()
 }
+
 func (i Int) Serialize() ([]byte, error) {
 	return []byte(":" + strconv.Itoa(int(i)) + "\r\n"), nil
 }
+
 func (s SimpleString) Serialize() ([]byte, error) {
 	if strings.ContainsAny(string(s), "\r\n") {
 		return nil, errors.New("SimpleString cannot contain CR or LF characters")
@@ -70,4 +75,15 @@ func (a *Array[T]) Equal(other *Array[T]) bool {
 
 func (b BulkNullString) Serialize() ([]byte, error) {
 	return []byte("$-1\r\n"), nil
+}
+
+func ToSerializable(val interface{}) Serializable {
+	switch val := val.(type) {
+	case int:
+		return Int(val)
+	case string:
+		return BulkString(val)
+	default:
+		panic(fmt.Sprintf("Not supported type for serializable: %T; %v", val, val))
+	}
 }

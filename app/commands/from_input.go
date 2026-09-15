@@ -51,6 +51,19 @@ func FromInput(input []string, strg *storage.Storage) (Command, error) {
 		}
 		return &RPushCommand{strg, input[1], ToAny(input[2:])}, nil
 
+	case "LRANGE":
+		if len(input) != 4 {
+			return nil, fmt.Errorf("LRANGE args format: key, start, end")
+		}
+		start, err := strconv.Atoi(input[2])
+		if err != nil {
+			return nil, err
+		}
+		end, err := strconv.Atoi(input[3])
+		if err != nil {
+			return nil, err
+		}
+		return &LRangeCommand{strg, input[1], start, end}, nil
 	default:
 		return nil, errors.New("Unknown command: " + input[0])
 	}

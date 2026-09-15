@@ -115,6 +115,6 @@ func stringify(input []parser.Serializable) ([]string, error) {
 			return nil, errors.New(msg)
 		}
 	}
-	logger.Debug("Stringify", "input", input, "output", args)
+	// logger.Debug("Stringify", "input", input, "output", args)
 	return args, nil
 }
