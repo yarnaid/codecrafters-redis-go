@@ -43,7 +43,7 @@ func TestHandler(t *testing.T) {
 			require.NoError(t, err)
 
 			response := buf[:n]
-			assert.Equal(t, tt.output, response)
+			assert.Equal(t, string(tt.output), string(response))
 		})
 	}
 }

@@ -61,12 +61,17 @@ func (s *Storage) Append(key string, values ...interface{}) int {
 
 	val, ok := s.data[key]
 	if !ok {
-		val = &Value{Value: make([]interface{}, 1)}
+		slog.Debug("[Storage][Append] no array, creating", "key", key)
+		// slog.Debug("[Storage][Append] current data", "data", s.data)
+		val = &Value{Value: make([]interface{}, 0)}
+		s.data[key] = val
 	}
 	arr, ok := val.Value.([]interface{})
 	if !ok {
 		return 0
 	}
-	val.Value = append(arr, values)
-	return len(values)
+	val.Value = append(arr, values...)
+	res_arr, _ := val.Value.([]interface{})
+	slog.Debug("[Storage][Append] len", "len", len(res_arr), "val", res_arr)
+	return len(res_arr)
 }

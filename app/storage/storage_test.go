@@ -8,9 +8,10 @@ import (
 	"my-redis/app/storage"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestStorageSetNGet(t *testing.T) {
+func TestStorage_SetNGet(t *testing.T) {
 	type SetVal struct {
 		Key   string
 		Value interface{}
@@ -56,4 +57,28 @@ func TestStorageSetNGet(t *testing.T) {
 	}
 
 	_ = tests
+}
+
+func TestStorage_Append(t *testing.T) {
+	tests := []struct {
+		name   string
+		values []interface{}
+	}{
+		{"simple", []interface{}{}},
+	}
+	key := "key"
+
+	require := require.New(t)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := storage.NewStorage()
+			for _, v := range tt.values {
+				res := s.Append(key, v)
+				require.Equal(1, res)
+			}
+			res, _ := s.Get(key)
+			res_arr, _ := res.([]interface{})
+			require.Equal(len(tt.values), len(res_arr))
+		})
+	}
 }
