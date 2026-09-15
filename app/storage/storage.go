@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"log/slog"
 	"sync"
 	"time"
@@ -162,4 +163,30 @@ func (s *Storage) LLen(key string) int {
 		return 0
 	}
 	return len(arr)
+}
+
+func (s *Storage) LPop(key string) (interface{}, error) {
+	s.mu.RLock()
+	defer func() {
+		s.mu.RUnlock()
+	}()
+
+	val, ok := s.data[key]
+	if !ok {
+		slog.Debug("[Storage][LPop] key not found")
+		return nil, errors.New("not found")
+	}
+	arr, ok := val.Value.([]interface{})
+	if !ok {
+		slog.Debug("[Storage][LRange] key is not array")
+		return nil, errors.New("not an array")
+	}
+	if len(arr) == 0 {
+		return nil, errors.New("arr is empty")
+	}
+	v := arr[0]
+	copy(arr[:len(arr)-1], arr[1:])
+	arr = arr[:len(arr)-1]
+	val.Value = arr
+	return v, nil
 }
