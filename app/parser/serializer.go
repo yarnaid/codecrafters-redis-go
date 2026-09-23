@@ -92,10 +92,16 @@ func ToSerializable(val interface{}) Serializable {
 		return val
 	case Serializable:
 		return val
+	case []Serializable:
+		res := make(Array[Serializable], len(val))
+		for i, v := range val {
+			res[i] = v
+		}
+		return res
 	case []interface{}:
-		var res Array[Serializable]
-		for _, v := range val {
-			res = append(res, ToSerializable(v))
+		res := make(Array[Serializable], len(val))
+		for i, v := range val {
+			res[i] = ToSerializable(v)
 		}
 		return res
 	default:
