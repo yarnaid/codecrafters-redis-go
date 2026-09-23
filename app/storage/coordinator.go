@@ -284,14 +284,35 @@ func (c *Coordinator) Type(key string) (ValueKind, error) {
 	return v.Kind, nil
 }
 
-func (c *Coordinator) Xadd(id string, kvPairs ...parser.Serializable) {
+func (c *Coordinator) Xadd(key, id string, kvPairs ...parser.Serializable) (string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	v, ok := c.backend.Get(id)
+	v, ok := c.backend.Get(key)
 	if !ok {
-		v = Value{Kind: KindStream}
+		v = Value{Kind: KindStream, Value: make([]*StreamContainer, 0)}
 	}
-	// do some stuff
-	c.backend.Set(id, &v)
+	stream, ok := v.Value.([]*StreamContainer)
+	if !ok {
+		return id, fmt.Errorf("value %T is not slice stream containers k=%q, v=%v", v.Value, key, v.Value)
+	}
+	newId, err := ParseStreamId(id)
+	if err != nil {
+		return id, err
+	}
+	newStreamVal := &StreamContainer{Id: newId}
+	if len(stream) > 0 {
+		last := stream[len(stream)-1]
+		if !newStreamVal.Greater(last) {
+			err = InvalidStreamIdSeq{&last.Id, &newId}
+			slog.Error("invalid stream id seq", "err", err)
+			return id, err
+		}
+		slog.Debug("[Coordinator][Xadd] greater!", "key", key, "oldId", last.Id, "newId", newId)
+	} else {
+		slog.Debug("[Coordinator][Xadd] skipping empty list validation", "key", key)
+	}
+	v.Value = append(stream, newStreamVal)
+	c.backend.Set(key, &v)
+	return id, nil
 }

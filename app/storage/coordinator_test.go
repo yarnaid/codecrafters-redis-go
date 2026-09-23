@@ -230,3 +230,20 @@ func TestCoordinator_Type(t *testing.T) {
 	require.Nil(err)
 	require.Equal(storage.KindList, v)
 }
+
+func TestCoordinator_Xadd(t *testing.T) {
+	c := storage.NewMemoryCoordinator(nil)
+	key := "xadd-key"
+	require := require.New(t)
+
+	id, err := c.Xadd(key, "1-1")
+	require.Nil(err)
+	require.Equal("1-1", id)
+
+	id, err = c.Xadd(key, "1-2")
+	require.Nil(err)
+	require.Equal("1-2", id)
+
+	_, err = c.Xadd(key, "1-2")
+	require.ErrorContains(err, "wrong streamId seq:")
+}
