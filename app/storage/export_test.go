@@ -8,3 +8,7 @@ func (c *Coordinator) WaitersLen(key string) int {
 	}
 	return 0
 }
+
+func (c *Coordinator) Backend() Backend {
+	return c.backend
+}

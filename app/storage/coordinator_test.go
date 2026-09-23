@@ -66,21 +66,24 @@ func TestCoordinator_Append(t *testing.T) {
 		name   string
 		values []parser.Serializable
 	}{
-		{"simple", []parser.Serializable{}},
+		// {"0", []parser.Serializable{}},
+		{"int 1", []parser.Serializable{parser.Int(0)}},
+		{"int 2", []parser.Serializable{parser.Int(0), parser.Int(1)}},
+		{"int 3", []parser.Serializable{parser.Int(0), parser.Int(1), parser.Int(2)}},
 	}
-	key := "key"
+	key := "coord-append-key"
 
 	require := require.New(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := storage.NewMemoryCoordinator(nil)
-			for _, v := range tt.values {
-				res := s.Append(key, v)
-				require.Equal(1, res)
-			}
-			res, _ := s.Get(key)
-			res_arr, _ := res.([]interface{})
-			require.Equal(len(tt.values), len(res_arr))
+			s.Append(key, tt.values...)
+			res, ok := s.Get(key)
+			require.True(ok, "cannot get key %v", key)
+			res_arr, ok := res.([]parser.Serializable)
+			require.True(ok, "cannot convert value %v of %T", res, res)
+			vv, _ := s.Backend().Get(key)
+			require.Equal(len(tt.values), len(res_arr), "incorrect array len %v\nval %v", res_arr, vv)
 		})
 	}
 }
@@ -172,7 +175,7 @@ func TestCoordinator_LPop2Clients(t *testing.T) {
 		require.Eventually(func() bool { return c.WaitersLen(key) > 0 }, time.Second, 50*time.Millisecond)
 
 		n := c.Append(key, parser.BulkString(value))
-		require.Equal(0, n)
+		require.Equal(1, n)
 
 		select {
 		case res := <-result_ch1:
@@ -184,4 +187,31 @@ func TestCoordinator_LPop2Clients(t *testing.T) {
 			require.Fail("client1 didn't receive response after. 10ms")
 		}
 	})
+}
+
+func TestCoordinator_LLen(t *testing.T) {
+	key := "coord-llen-key"
+	tests := []struct {
+		values   []parser.Serializable
+		expected int
+	}{
+		{[]parser.Serializable{parser.Int(0)}, 1},
+		{[]parser.Serializable{parser.Int(0), parser.Int(1)}, 2},
+		{[]parser.Serializable{parser.Int(0), parser.Int(1), parser.Int(2)}, 3},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprint(tt.expected), func(t *testing.T) {
+			require := require.New(t)
+			c := storage.NewMemoryCoordinator(nil)
+			c.Append(key, tt.values...)
+			stored_inter, ok := c.Get(key)
+			require.True(ok)
+			stored, ok := stored_inter.([]parser.Serializable)
+			require.True(ok, "got value %v of %T", stored_inter, stored_inter)
+			require.Equal(tt.expected, len(stored), "got %v (%d) of type %t", stored, len(stored), stored)
+			res := c.LLen(key)
+			require.Equal(tt.expected, res, "incorrect array=%v", stored)
+		})
+	}
 }

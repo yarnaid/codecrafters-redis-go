@@ -156,9 +156,9 @@ func (s *Coordinator) LLen(key string) int {
 		slog.Debug("[Coordinator][LLen] key not found")
 		return 0
 	}
-	arr, ok := val.Value.([]interface{})
+	arr, ok := val.Value.([]parser.Serializable)
 	if !ok {
-		slog.Debug("[Coordinator][LRange] key is not array")
+		slog.Debug("[Coordinator][LLen] key is not array")
 		return 0
 	}
 	return len(arr)

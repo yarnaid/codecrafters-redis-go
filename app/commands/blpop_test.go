@@ -104,7 +104,7 @@ func TestBLPop2Clients(t *testing.T) {
 		push := &RPushCommand{c, key, []parser.Serializable{parser.BulkString(value)}}
 		res, err := push.Execute()
 		require.Nil(err)
-		require.Equal(parser.Int(0), res)
+		require.Equal(parser.Int(1), res)
 
 		select {
 		case <-time.After(10 * time.Millisecond):
