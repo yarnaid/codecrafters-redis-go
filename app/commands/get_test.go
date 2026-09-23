@@ -18,16 +18,17 @@ func TestGetCommand_Execute(t *testing.T) {
 		Key     string
 		Value   interface{}
 		TTL     time.Duration
+		Kind    storage.ValueKind
 		wantErr bool
 	}
 	tests := []struct {
 		name  string // description of this test case
 		store []kv
 	}{
-		{"simple", []kv{{"123", 123, 0, false}}},
-		{"ttl", []kv{{"124", 124, 100 * time.Millisecond, false}}},
-		{"twice", []kv{{"125", 125, 0, false}, {"126", 126, 0, false}}},
-		{"twice diff", []kv{{"127", 127, 0, false}, {"str", "str", 0, false}}},
+		{"simple", []kv{{"123", 123, 0, storage.KindString, false}}},
+		{"ttl", []kv{{"124", 124, 100 * time.Millisecond, storage.KindString, false}}},
+		{"twice", []kv{{"125", 125, 0, storage.KindString, false}, {"126", 126, 0, storage.KindString, false}}},
+		{"twice diff", []kv{{"127", 127, 0, storage.KindString, false}, {"str", "str", 0, storage.KindString, false}}},
 	}
 	assert := assert.New(t)
 	require := require.New(t)
@@ -37,7 +38,7 @@ func TestGetCommand_Execute(t *testing.T) {
 			s := storage.NewMemoryCoordinator(nil)
 			for _, v := range tt.store {
 				// slog.Debug("Want set", "key", v.Key, "value", v.Value)
-				require.True(s.Set(v.Key, v.Value, v.TTL))
+				require.True(s.Set(v.Key, v.Value, v.TTL, v.Kind))
 				// slog.Debug("Success set", "key", v.Key, "value", v.Value)
 
 				p := commands.GetCommand{s, v.Key}

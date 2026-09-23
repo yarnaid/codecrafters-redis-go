@@ -98,6 +98,9 @@ func FromInput(input []string, coordinator *storage.Coordinator) (Command, error
 		}
 		return &BLPop{S: coordinator, Key: input[1], Timeout: time.Duration(math.Round(timeout * float64(time.Second)))}, nil
 
+	case "TYPE":
+		return &TypeCommand{Coord: coordinator, Key: input[1]}, nil
+
 	default:
 		return nil, errors.New("Unknown command: " + input[0])
 	}

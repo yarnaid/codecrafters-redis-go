@@ -39,12 +39,12 @@ func NewMemoryCoordinator(memory *MemoryBackend) *Coordinator {
 	}
 }
 
-func (s *Coordinator) Set(key string, value interface{}, ttl time.Duration) bool {
+func (s *Coordinator) Set(key string, value interface{}, ttl time.Duration, kind ValueKind) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	// slog.Debug("[Coordinator][Set]", "key", key, "value", value, "ttl", ttl_ms)
-	val := Value{Value: value}
+	val := Value{Value: value, Kind: kind}
 	if ttl > 0 {
 		val.ExpireAt = time.Now().Add(ttl)
 	}
@@ -86,7 +86,7 @@ func (s *Coordinator) Append(key string, values ...parser.Serializable) int {
 	if !ok {
 		slog.Debug("[Coordinator][Append] no array, creating", "key", key)
 		// slog.Debug("[Storage][Append] current data", "data", s.data)
-		val = Value{Value: make([]parser.Serializable, 0)}
+		val = Value{Value: make([]parser.Serializable, 0), Kind: KindList}
 		s.backend.Set(key, &val)
 	}
 	arr, ok := val.Value.([]parser.Serializable)
@@ -114,7 +114,7 @@ func (s *Coordinator) Prepend(key string, values ...parser.Serializable) int {
 	val, ok := s.backend.Get(key)
 	if !ok {
 		// slog.Debug("[Coordinator][Append] no array, creating", "key", key)
-		val = Value{Value: make([]parser.Serializable, 0)}
+		val = Value{Value: make([]parser.Serializable, 0), Kind: KindList}
 		s.backend.Set(key, &val)
 	}
 	arr, ok := val.Value.([]parser.Serializable)
@@ -268,4 +268,18 @@ func (c *Coordinator) tryHandover(key string, value parser.Serializable) bool {
 	waiter.ch <- value
 	slog.Debug("[Coordinator][tryHandoff] success", "key", key)
 	return true
+}
+
+func (c *Coordinator) Type(key string) (ValueKind, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	v, ok := c.backend.Get(key)
+	if !ok {
+		return KindNone, nil
+	}
+	if !v.Kind.IsValid() {
+		slog.Error("incorrect value kind", "kind", v.Kind)
+		return "", fmt.Errorf("invalid kind %q", v.Kind)
+	}
+	return v.Kind, nil
 }

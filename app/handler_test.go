@@ -17,6 +17,7 @@ func TestHandler(t *testing.T) {
 		input  []byte
 		output []byte
 	}{
+		{"type", []byte("*2\r\n$4\r\nTYPE\r\n$4\r\nNONE\r\n"), []byte("+none\r\n")},
 		{"ping", []byte("*1\r\n$4\r\nPING\r\n"), []byte("+PONG\r\n")},
 		{"echo", []byte("*2\r\n$4\r\nECHO\r\n$11\r\nhello world\r\n"), []byte("$11\r\nhello world\r\n")},
 		{"echo", []byte("*2\r\n$4\r\nECHO\r\n$9\r\npineapple\r\n"), []byte("$9\r\npineapple\r\n")},

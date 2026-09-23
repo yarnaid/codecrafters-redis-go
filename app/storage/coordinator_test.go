@@ -18,6 +18,7 @@ func TestCoordinator_SetNGet(t *testing.T) {
 		Key   string
 		Value interface{}
 		TTL   time.Duration
+		Kind  storage.ValueKind
 	}
 	tests := []struct {
 		name   string
@@ -25,10 +26,10 @@ func TestCoordinator_SetNGet(t *testing.T) {
 		result []bool
 		err    error
 	}{
-		{"simple set & get", []SetVal{{"123", 123, 0}}, []bool{true}, nil},
-		{"set & get 2 vals", []SetVal{{"123", 123, 0}, {"124", 124, 0}}, []bool{true, true}, nil},
-		{"set & get twice", []SetVal{{"123", 123, 0}, {"123", 123, 0}}, []bool{true, true}, nil},
-		{"set & get with TTL", []SetVal{{"123", 123, 100 * time.Millisecond}}, []bool{true}, nil},
+		{"simple set & get", []SetVal{{"123", 123, 0, storage.KindString}}, []bool{true}, nil},
+		{"set & get 2 vals", []SetVal{{"123", 123, 0, storage.KindString}, {"124", 124, 0, storage.KindString}}, []bool{true, true}, nil},
+		{"set & get twice", []SetVal{{"123", 123, 0, storage.KindString}, {"123", 123, 0, storage.KindString}}, []bool{true, true}, nil},
+		{"set & get with TTL", []SetVal{{"123", 123, 100 * time.Millisecond, storage.KindString}}, []bool{true}, nil},
 	}
 
 	assert := assert.New(t)
@@ -40,7 +41,7 @@ func TestCoordinator_SetNGet(t *testing.T) {
 			slog.Debug(tt.name)
 			s := storage.NewMemoryCoordinator(nil)
 			for i, v := range tt.set {
-				ret := s.Set(v.Key, v.Value, v.TTL)
+				ret := s.Set(v.Key, v.Value, v.TTL, v.Kind)
 				assert.Equal(tt.result[i], ret)
 
 				val, ok := s.Get(v.Key)
@@ -214,4 +215,18 @@ func TestCoordinator_LLen(t *testing.T) {
 			require.Equal(tt.expected, res, "incorrect array=%v", stored)
 		})
 	}
+}
+
+func TestCoordinator_Type(t *testing.T) {
+	c := storage.NewMemoryCoordinator(nil)
+	require := require.New(t)
+	c.Set("str", "str", 0, storage.KindString)
+	v, err := c.Type("str")
+	require.Nil(err)
+	require.Equal(storage.KindString, v)
+
+	c.Append("list", []parser.Serializable{parser.BulkString("str")}...)
+	v, err = c.Type("list")
+	require.Nil(err)
+	require.Equal(storage.KindList, v)
 }

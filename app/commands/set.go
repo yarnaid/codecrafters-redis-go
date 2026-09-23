@@ -16,7 +16,7 @@ type SetCommand struct {
 }
 
 func (s *SetCommand) Execute() (parser.Serializable, error) {
-	ok := s.Storage.Set(s.Key, s.Value, s.TTL)
+	ok := s.Storage.Set(s.Key, s.Value, s.TTL, storage.KindString)
 	if !ok {
 		return nil, fmt.Errorf("Cannot set `%v` to key `%v`", s.Value, s.Key)
 	}
