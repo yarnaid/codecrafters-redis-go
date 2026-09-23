@@ -3,6 +3,7 @@ package commands
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -91,11 +92,11 @@ func FromInput(input []string, coordinator *storage.Coordinator) (Command, error
 		return nil, fmt.Errorf("wrong args number %d, must be 1 only", len(input)-1)
 
 	case "BLPOP":
-		timeout, err := strconv.Atoi(input[2])
+		timeout, err := strconv.ParseFloat(input[2], 64)
 		if err != nil {
 			return nil, err
 		}
-		return &BLPop{S: coordinator, Key: input[1], Timeout: time.Duration(timeout) * time.Second}, nil
+		return &BLPop{S: coordinator, Key: input[1], Timeout: time.Duration(math.Round(timeout * float64(time.Second)))}, nil
 
 	default:
 		return nil, errors.New("Unknown command: " + input[0])

@@ -152,7 +152,7 @@ func TestCoordinator_RPush(t *testing.T) {
 	}
 }
 
-func TestCoordinator_LPop2Clients(t *testing.T) {
+func TestCoordinator_BLPop2Clients(t *testing.T) {
 	c := storage.NewMemoryCoordinator(nil)
 	key := "coord-bl-pop-key"
 	value := "coord-bl-pop-value"
