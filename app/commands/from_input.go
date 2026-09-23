@@ -101,6 +101,9 @@ func FromInput(input []string, coordinator *storage.Coordinator) (Command, error
 	case "TYPE":
 		return &TypeCommand{Coord: coordinator, Key: input[1]}, nil
 
+	case "XADD":
+		return &XaddCommand{Coord: coordinator, Id: input[1], Values: toSerializableSlice(input[2:])}, nil
+
 	default:
 		return nil, errors.New("Unknown command: " + input[0])
 	}

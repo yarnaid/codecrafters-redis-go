@@ -283,3 +283,15 @@ func (c *Coordinator) Type(key string) (ValueKind, error) {
 	}
 	return v.Kind, nil
 }
+
+func (c *Coordinator) Xadd(id string, kvPairs ...parser.Serializable) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	v, ok := c.backend.Get(id)
+	if !ok {
+		v = Value{Kind: KindStream}
+	}
+	// do some stuff
+	c.backend.Set(id, &v)
+}
