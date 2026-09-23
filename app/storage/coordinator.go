@@ -74,10 +74,12 @@ func (s *Coordinator) Append(key string, values ...parser.Serializable) int {
 	slog.Debug("[Coordinator][Append]", "key", key, "values", values)
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	var popped int
 
 	if handoff := s.tryHandover(key, values[0]); handoff {
 		slog.Debug("[Coordinator][Append] handoff success for value 0", "key", key, "values", values)
 		values = values[1:]
+		popped = 1
 	}
 
 	val, ok := s.backend.Get(key)
@@ -95,16 +97,18 @@ func (s *Coordinator) Append(key string, values ...parser.Serializable) int {
 	val.Value = arr
 	s.backend.Set(key, &val)
 	slog.Debug("[Coordinator][Append] len", "len", len(arr), "val", val.Value)
-	return len(arr)
+	return len(arr) + popped
 }
 
 func (s *Coordinator) Prepend(key string, values ...parser.Serializable) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	var popped int
 
 	if handoff := s.tryHandover(key, values[0]); handoff {
 		slog.Debug("[Coordinator][Prepend] handoff success, removing value 0", "key", key, "values", values)
 		values = values[1:]
+		popped = 1
 	}
 
 	val, ok := s.backend.Get(key)
@@ -121,7 +125,7 @@ func (s *Coordinator) Prepend(key string, values ...parser.Serializable) int {
 	s.backend.Set(key, &val)
 	res_arr, _ := val.Value.([]parser.Serializable)
 	// slog.Debug("[Storage][Append] len", "len", len(res_arr), "val", res_arr)
-	return len(res_arr)
+	return len(res_arr) + popped
 }
 
 func (s *Coordinator) LRange(key string, start, end int) parser.Array[parser.Serializable] {
