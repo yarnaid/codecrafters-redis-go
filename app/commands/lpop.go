@@ -6,7 +6,7 @@ import (
 )
 
 type LPop struct {
-	S   *storage.Storage
+	S   *storage.Coordinator
 	Key string
 	N   int
 }

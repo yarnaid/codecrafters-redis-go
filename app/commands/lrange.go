@@ -6,7 +6,7 @@ import (
 )
 
 type LRangeCommand struct {
-	S          *storage.Storage
+	S          *storage.Coordinator
 	Key        string
 	Start, End int
 }

@@ -1,6 +1,8 @@
 {
     "cSpell.words": [
+        "blpop",
         "codecrafters",
+        "LPUSH",
         "LRANGE",
         "RPUSH",
         "stretchr",

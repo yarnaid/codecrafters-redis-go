@@ -19,8 +19,8 @@ type RW interface {
 }
 
 type Handler struct {
-	Conn RW
-	Strg *storage.Storage
+	Conn        RW
+	Coordinator *storage.Coordinator
 }
 
 func (h *Handler) SetConn(conn RW) {
@@ -29,10 +29,7 @@ func (h *Handler) SetConn(conn RW) {
 
 func (h *Handler) HandleConnection() {
 	logger.Info("Handling new connection...")
-	defer func() {
-		h.Conn.Close()
-		logger.Debug("Connection closed")
-	}()
+	defer h.Conn.Close()
 
 	for {
 		var buf [BUFFER_SIZE]byte
@@ -41,7 +38,7 @@ func (h *Handler) HandleConnection() {
 			logger.Error("Error reading from connection", "error", err.Error())
 			break
 		}
-		logger.Debug("data received", "data", string(buf[:n]))
+		logger.Debug("[Handler]", "data", string(buf[:n]))
 
 		h.process_command(buf[:n])
 
@@ -56,14 +53,14 @@ func (h *Handler) process_command(buf []byte) {
 		return
 	}
 
-	command_arr, err := stringify(input_data.([]parser.Serializable))
+	command_arr, err := toStringsSlice(input_data.([]parser.Serializable))
 	if err != nil {
 		msg := "Cannot convert input to strings array"
 		logger.Error(msg, "data", input_data, "type", fmt.Sprintf("%#v\n", input_data))
 		h.send_error_response(msg, err)
 		return
 	}
-	command, err := commands.FromInput(command_arr, h.Strg)
+	command, err := commands.FromInput(command_arr, h.Coordinator)
 	if err != nil {
 		logger.Error("Error parsing command", "error", err.Error())
 		h.send_error_response("Error parsing command", err)
@@ -102,7 +99,7 @@ func (h *Handler) send_response(response parser.Serializable) {
 	}
 }
 
-func stringify(input []parser.Serializable) ([]string, error) {
+func toStringsSlice(input []parser.Serializable) ([]string, error) {
 	args := make([]string, len(input))
 	for i, s := range input {
 		switch v := s.(type) {

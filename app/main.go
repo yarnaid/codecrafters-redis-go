@@ -20,6 +20,7 @@ var cfg = Config{
 
 func main() {
 	logger.Info("Logs from your program will appear here!")
+	coordinator := storage.NewMemoryCoordinator(nil)
 
 	l, err := net.Listen("tcp", cfg.address+":"+cfg.port)
 	if err != nil {
@@ -32,7 +33,7 @@ func main() {
 			logger.Error("Error accepting connection", "error", err.Error())
 			os.Exit(1)
 		}
-		handler := Handler{Conn: conn, Strg: storage.NewStorage()}
+		handler := Handler{Conn: conn, Coordinator: coordinator}
 		go handler.HandleConnection()
 	}
 }

@@ -23,6 +23,7 @@ type (
 	SimpleError    string
 	Array[t SC]    []t
 	BulkNullString string
+	NullArray      int
 )
 
 func Serialize(val Serializable) ([]byte, error) {
@@ -73,6 +74,10 @@ func (a *Array[T]) Equal(other *Array[T]) bool {
 	return true
 }
 
+func (n NullArray) Serialize() ([]byte, error) {
+	return []byte("*-1\r\n"), nil
+}
+
 func (b BulkNullString) Serialize() ([]byte, error) {
 	return []byte("$-1\r\n"), nil
 }
@@ -83,6 +88,10 @@ func ToSerializable(val interface{}) Serializable {
 		return Int(val)
 	case string:
 		return BulkString(val)
+	case Int:
+		return val
+	case Serializable:
+		return val
 	case []interface{}:
 		var res Array[Serializable]
 		for _, v := range val {

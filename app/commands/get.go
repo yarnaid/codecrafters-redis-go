@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"log/slog"
 
 	"my-redis/app/parser"
 	"my-redis/app/storage"
@@ -17,24 +16,24 @@ func (e *NotFoundError) Error() string {
 }
 
 type GetCommand struct {
-	Strg *storage.Storage
+	Strg *storage.Coordinator
 	Key  string
 }
 
 func (c *GetCommand) Execute() (parser.Serializable, error) {
-	slog.Debug("Start GET command", "key", c.Key)
+	// slog.Debug("[Command][GET]", "key", c.Key)
 	val, ok := c.Strg.Get(c.Key)
 	if !ok {
-		slog.Debug("[GET CMD] value is not received", "key", c.Key)
+		// slog.Debug("[Command][GET] value is not received", "key", c.Key)
 		return parser.BulkNullString(""), nil
 	}
-	slog.Debug("[GET CMD] got", "val", val, "ok", ok)
+	// slog.Debug("[Command][GET] got", "val", val, "ok", ok)
 	switch val := val.(type) {
 	case string:
-		slog.Debug("[GET CMD]", "string", val)
+		// slog.Debug("[Command][GET]", "string", val)
 		return parser.BulkString(val), nil
 	case int:
-		slog.Debug("[GET CMD]", "int", val)
+		// slog.Debug("[Command][GET]", "int", val)
 		return parser.Int(val), nil
 	default:
 		return nil, fmt.Errorf("unsupported type %T", val)

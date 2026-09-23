@@ -6,9 +6,9 @@ import (
 )
 
 type LPushCommand struct {
-	S      *storage.Storage
+	S      *storage.Coordinator
 	Key    string
-	Values []interface{}
+	Values []parser.Serializable
 }
 
 func (r *LPushCommand) Execute() (parser.Serializable, error) {

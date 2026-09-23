@@ -6,7 +6,7 @@ import (
 )
 
 type LLen struct {
-	S   *storage.Storage
+	S   *storage.Coordinator
 	Key string
 }
 

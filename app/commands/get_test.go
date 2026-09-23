@@ -17,7 +17,7 @@ func TestGetCommand_Execute(t *testing.T) {
 	type kv struct {
 		Key     string
 		Value   interface{}
-		TTL_MS  int
+		TTL     time.Duration
 		wantErr bool
 	}
 	tests := []struct {
@@ -25,35 +25,35 @@ func TestGetCommand_Execute(t *testing.T) {
 		store []kv
 	}{
 		{"simple", []kv{{"123", 123, 0, false}}},
-		{"ttl", []kv{{"123", 123, 100, false}}},
-		{"twice", []kv{{"123", 123, 0, false}, {"123", 123, 0, false}}},
-		{"twice diff", []kv{{"123", 123, 0, false}, {"str", "str", 0, false}}},
+		{"ttl", []kv{{"124", 124, 100 * time.Millisecond, false}}},
+		{"twice", []kv{{"125", 125, 0, false}, {"126", 126, 0, false}}},
+		{"twice diff", []kv{{"127", 127, 0, false}, {"str", "str", 0, false}}},
 	}
 	assert := assert.New(t)
 	require := require.New(t)
 	slog.SetLogLoggerLevel(slog.LevelDebug)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := storage.NewStorage()
+			s := storage.NewMemoryCoordinator(nil)
 			for _, v := range tt.store {
-				slog.Debug("Want set", "key", v.Key, "value", v.Value)
-				require.True(s.Set(v.Key, v.Value, v.TTL_MS))
-				slog.Debug("Success set", "key", v.Key, "value", v.Value)
+				// slog.Debug("Want set", "key", v.Key, "value", v.Value)
+				require.True(s.Set(v.Key, v.Value, v.TTL))
+				// slog.Debug("Success set", "key", v.Key, "value", v.Value)
 
 				p := commands.GetCommand{s, v.Key}
 				got, gotErr := p.Execute()
-				slog.Debug("GET cmd executed", "got", got, "gotErr", gotErr)
+				// slog.Debug("GET cmd executed", "got", got, "gotErr", gotErr)
 				if !v.wantErr {
 					assert.Nil(gotErr)
 					switch vv := v.Value.(type) {
 					case int:
-						assert.Equal(parser.Int(vv), got)
+						require.Equal(parser.Int(vv), got)
 					case string:
-						assert.Equal(parser.BulkString(vv), got)
+						require.Equal(parser.BulkString(vv), got)
 					}
 
-					if v.TTL_MS > 0 {
-						time.Sleep(time.Duration(v.TTL_MS+10) * time.Microsecond)
+					if v.TTL > 0 {
+						time.Sleep(v.TTL + time.Millisecond)
 						p := commands.GetCommand{s, v.Key}
 						got, gotErr = p.Execute()
 						require.Nil(gotErr)

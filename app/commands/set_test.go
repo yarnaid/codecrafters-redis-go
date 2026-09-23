@@ -9,13 +9,14 @@ import (
 	"my-redis/app/storage"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSetCommand(t *testing.T) {
 	type set_args struct {
-		Key    string
-		Value  interface{}
-		TTL_MS int
+		Key   string
+		Value interface{}
+		TTL   time.Duration
 
 		ResVal parser.Serializable
 		Error  error
@@ -26,16 +27,17 @@ func TestSetCommand(t *testing.T) {
 	}{
 		{"simple", []set_args{{"123", 123, 0, parser.SimpleString("OK"), nil}}},
 		{"simple twice", []set_args{{"123", 123, 0, parser.SimpleString("OK"), nil}, {"123", 123, 0, parser.SimpleString("OK"), nil}}},
-		{"simple with ttl", []set_args{{"123", 123, 100, parser.SimpleString("OK"), nil}}},
+		{"simple with ttl", []set_args{{"123", 123, 100 * time.Millisecond, parser.SimpleString("OK"), nil}}},
 	}
 
 	assert := assert.New(t)
+	require := require.New(t)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := storage.NewStorage()
+			s := storage.NewMemoryCoordinator(nil)
 			for _, ttt := range tt.args {
-				cmd := SetCommand{s, ttt.Key, ttt.Value, ttt.TTL_MS}
+				cmd := SetCommand{s, ttt.Key, ttt.Value, ttt.TTL}
 				res, err := cmd.Execute()
 				assert.Equal(ttt.ResVal, res)
 				assert.Nil(err)
@@ -43,11 +45,11 @@ func TestSetCommand(t *testing.T) {
 				assert.True(ok)
 				assert.Equal(ttt.Value, s_val)
 
-				if ttt.TTL_MS > 0 {
-					time.Sleep(time.Duration(ttt.TTL_MS+10) * time.Microsecond)
+				if ttt.TTL > 0 {
+					time.Sleep(ttt.TTL + time.Microsecond)
 					s_val, ok = s.Get(ttt.Key)
-					assert.False(ok)
-					assert.Equal(nil, s_val)
+					require.False(ok, "value must be missing after ttl")
+					require.Equal(nil, s_val)
 				}
 			}
 		})

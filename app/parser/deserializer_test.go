@@ -2,9 +2,10 @@ package parser_test
 
 import (
 	"log/slog"
+	"reflect"
 	"testing"
 
-	"reflect"
+	. "my-redis/app/parser"
 
 	"github.com/stretchr/testify/assert"
 )

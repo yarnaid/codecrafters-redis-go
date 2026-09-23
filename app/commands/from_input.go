@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
+	"my-redis/app/parser"
 	"my-redis/app/storage"
 )
 
-func FromInput(input []string, strg *storage.Storage) (Command, error) {
+func FromInput(input []string, coordinator *storage.Coordinator) (Command, error) {
 	if len(input) == 0 {
 		return nil, errors.New("Empty command")
 	}
@@ -27,18 +29,18 @@ func FromInput(input []string, strg *storage.Storage) (Command, error) {
 			return nil, errors.New("GET command requires a key")
 		}
 
-		return &GetCommand{Strg: strg, Key: input[1]}, nil
+		return &GetCommand{Strg: coordinator, Key: input[1]}, nil
 	case "SET":
 		switch len(input) {
 		case 3:
-			return &SetCommand{Storage: strg, Key: input[1], Value: input[2]}, nil
+			return &SetCommand{Storage: coordinator, Key: input[1], Value: input[2]}, nil
 		case 5:
 			if strings.ToUpper(input[3]) == "PX" {
 				ttl_ms, err := strconv.Atoi(input[4])
 				if err != nil {
 					return nil, fmt.Errorf("cannot candle set command TTL: %w", err)
 				}
-				return &SetCommand{Storage: strg, Key: input[1], Value: input[2], TTL_MS: ttl_ms}, nil
+				return &SetCommand{Storage: coordinator, Key: input[1], Value: input[2], TTL: time.Duration(ttl_ms) * time.Millisecond}, nil
 			}
 			return nil, fmt.Errorf("SET got wrong arg: %v", input[3])
 		default:
@@ -49,13 +51,13 @@ func FromInput(input []string, strg *storage.Storage) (Command, error) {
 		if len(input) < 3 {
 			return nil, fmt.Errorf("RPUSH requires at least 2 args, %d got", len(input))
 		}
-		return &RPushCommand{strg, input[1], ToAny(input[2:])}, nil
+		return &RPushCommand{coordinator, input[1], toSerializableSlice(input[2:])}, nil
 
 	case "LPUSH":
 		if len(input) < 3 {
 			return nil, fmt.Errorf("LPUSH requires at least 2 args, %d got", len(input))
 		}
-		return &LPushCommand{strg, input[1], ToAny(input[2:])}, nil
+		return &LPushCommand{coordinator, input[1], toSerializableSlice(input[2:])}, nil
 
 	case "LRANGE":
 		if len(input) != 4 {
@@ -69,24 +71,32 @@ func FromInput(input []string, strg *storage.Storage) (Command, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &LRangeCommand{strg, input[1], start, end}, nil
+		return &LRangeCommand{coordinator, input[1], start, end}, nil
 
 	case "LLEN":
 		if len(input) != 2 {
 			return nil, fmt.Errorf("wrong args number %d, must be 1 only", len(input)-1)
 		}
-		return &LLen{strg, input[1]}, nil
+		return &LLen{coordinator, input[1]}, nil
 	case "LPOP":
 		if len(input) == 2 {
-			return &LPop{strg, input[1], 1}, nil
+			return &LPop{coordinator, input[1], 1}, nil
 		} else if len(input) == 3 {
 			n, err := strconv.Atoi(input[2])
 			if err != nil {
 				return nil, err
 			}
-			return &LPop{strg, input[1], n}, nil
+			return &LPop{coordinator, input[1], n}, nil
 		}
 		return nil, fmt.Errorf("wrong args number %d, must be 1 only", len(input)-1)
+
+	case "BLPOP":
+		timeout, err := strconv.Atoi(input[2])
+		if err != nil {
+			return nil, err
+		}
+		return &BLPop{S: coordinator, Key: input[1], Timeout: time.Duration(timeout) * time.Second}, nil
+
 	default:
 		return nil, errors.New("Unknown command: " + input[0])
 	}
@@ -98,4 +108,12 @@ func ToAny[T any](s []T) []any {
 		result[i] = v
 	}
 	return result
+}
+
+func toSerializableSlice[T any](vals []T) []parser.Serializable {
+	res := make([]parser.Serializable, len(vals))
+	for i, val := range vals {
+		res[i] = parser.ToSerializable(val)
+	}
+	return res
 }

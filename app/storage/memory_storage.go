@@ -11,19 +11,20 @@ import (
 
 var _ = slog.Log
 
-type Storage struct {
+type MemoryStorage struct {
 	mu   sync.RWMutex
 	data map[string]*Value
 }
 
-func NewStorage() *Storage {
-	res := Storage{
+func NewMemoryStorage() *MemoryStorage {
+	panic("this memory storage is deprecated!")
+	res := MemoryStorage{
 		data: make(map[string]*Value),
 	}
 	return &res
 }
 
-func (s *Storage) Set(key string, value interface{}, ttl_ms int) bool {
+func (s *MemoryStorage) Set(key string, value interface{}, ttl_ms int) bool {
 	s.mu.Lock()
 	defer func() {
 		s.mu.Unlock()
@@ -37,7 +38,7 @@ func (s *Storage) Set(key string, value interface{}, ttl_ms int) bool {
 	return true
 }
 
-func (s *Storage) Get(key string) (interface{}, bool) {
+func (s *MemoryStorage) Get(key string) (interface{}, bool) {
 	slog.Debug("[storage] GET", "key", key)
 	s.mu.RLock()
 	defer func() {
@@ -56,7 +57,7 @@ func (s *Storage) Get(key string) (interface{}, bool) {
 	return val.Value, true
 }
 
-func (s *Storage) Append(key string, values ...interface{}) int {
+func (s *MemoryStorage) Append(key string, values ...interface{}) int {
 	s.mu.Lock()
 	defer func() {
 		s.mu.Unlock()
@@ -79,7 +80,7 @@ func (s *Storage) Append(key string, values ...interface{}) int {
 	return len(res_arr)
 }
 
-func (s *Storage) Prepend(key string, values ...interface{}) int {
+func (s *MemoryStorage) Prepend(key string, values ...interface{}) int {
 	s.mu.Lock()
 	defer func() {
 		s.mu.Unlock()
@@ -102,15 +103,7 @@ func (s *Storage) Prepend(key string, values ...interface{}) int {
 	return len(res_arr)
 }
 
-func PrependReversed[T any](s []T, values ...T) []T {
-	result := make([]T, 0, len(values)+len(s))
-	for i := len(values) - 1; i >= 0; i-- {
-		result = append(result, values[i])
-	}
-	return append(result, s...)
-}
-
-func (s *Storage) LRange(key string, start, end int) parser.Array[parser.Serializable] {
+func (s *MemoryStorage) LRange(key string, start, end int) parser.Array[parser.Serializable] {
 	s.mu.RLock()
 	defer func() {
 		s.mu.RUnlock()
@@ -138,15 +131,7 @@ func (s *Storage) LRange(key string, start, end int) parser.Array[parser.Seriali
 	return res
 }
 
-func invert_index(i, ln int) int {
-	if i >= 0 {
-		return i
-	} else {
-		return max(ln+i, 0)
-	}
-}
-
-func (s *Storage) LLen(key string) int {
+func (s *MemoryStorage) LLen(key string) int {
 	s.mu.RLock()
 	defer func() {
 		s.mu.RUnlock()
@@ -165,7 +150,7 @@ func (s *Storage) LLen(key string) int {
 	return len(arr)
 }
 
-func (s *Storage) LPop(key string, n int) ([]interface{}, error) {
+func (s *MemoryStorage) LPop(key string, n int) ([]interface{}, error) {
 	s.mu.RLock()
 	defer func() {
 		s.mu.RUnlock()

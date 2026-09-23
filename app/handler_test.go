@@ -30,8 +30,8 @@ func TestHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			client, server := net.Pipe()
 			handler := Handler{
-				Conn: server,
-				Strg: storage.NewStorage(),
+				Conn:        server,
+				Coordinator: storage.NewMemoryCoordinator(nil),
 			}
 			go handler.HandleConnection()
 
