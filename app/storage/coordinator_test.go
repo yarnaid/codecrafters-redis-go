@@ -246,4 +246,29 @@ func TestCoordinator_Xadd(t *testing.T) {
 
 	_, err = c.Xadd(key, "1-2")
 	require.ErrorContains(err, "wrong streamId seq:")
+
+	id, err = c.Xadd(key, "1-*")
+	require.Nil(err, "err", err)
+	require.Equal("1-3", id)
+
+	nowMs := int(time.Now().UnixMilli())
+	id, err = c.Xadd(key, "*")
+	require.Nil(err)
+	streamId, err := storage.ParseStreamId(id)
+	require.Nil(err)
+	require.GreaterOrEqual(streamId.Time, nowMs)
+	require.Equal(0, streamId.Seq)
+
+	key += "-1"
+	id, err = c.Xadd(key, "0-*")
+	require.Nil(err)
+	require.Equal("0-1", id)
+
+	key = "-2"
+	id, err = c.Xadd(key, "*")
+	require.Nil(err)
+	streamId, err = storage.ParseStreamId(id)
+	require.Nil(err)
+	require.GreaterOrEqual(streamId.Time, nowMs)
+	require.Equal(0, streamId.Seq)
 }

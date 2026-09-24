@@ -5,12 +5,23 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"my-redis/app/parser"
 )
 
 type StreamId struct {
 	Time, Seq int
+}
+
+func (s *StreamId) String() string {
+	if s.Time < 0 {
+		return "*"
+	}
+	if s.Seq < 0 {
+		return fmt.Sprintf("%d-*", s.Time)
+	}
+	return fmt.Sprintf("%d-%d", s.Time, s.Seq)
 }
 
 type InvalidStreamIdSeq struct {
@@ -32,7 +43,24 @@ func (i InvalidStreamIdSeq) Error() string {
 	return fmt.Sprintf("wrong streamId seq: %v -> %v", i.Id1, i.Id2)
 }
 
-func StreamIdGreater(id1, id2 StreamId) bool {
+func StreamIdGreaterOrGen(id1, id2 *StreamId) bool {
+	if id2.Time < 0 {
+		id2.Time = int(time.Now().UnixMilli())
+		if id2.Time == id1.Time {
+			id2.Seq = id1.Seq + 1
+		} else {
+			id2.Seq = 0
+		}
+		return false
+	}
+	if id2.Seq < 0 {
+		if id2.Time == id1.Time {
+			id2.Seq = id1.Seq + 1
+		} else {
+			id2.Seq = 0
+		}
+		return false
+	}
 	switch c := cmp.Compare(id1.Time, id2.Time); {
 	case c < 0:
 		return false
@@ -48,7 +76,7 @@ func StreamIdGreater(id1, id2 StreamId) bool {
 	}
 }
 
-func (s StreamId) IsZero() bool {
+func (s *StreamId) IsZero() bool {
 	if s.Time == 0 && s.Seq == 0 {
 		return true
 	}
@@ -65,8 +93,8 @@ type StreamContainer struct {
 	Values []StreamValue
 }
 
-func (s *StreamContainer) Greater(other *StreamContainer) bool {
-	return StreamIdGreater(s.Id, other.Id)
+func (s *StreamContainer) GreaterOrGen(other *StreamContainer) bool {
+	return StreamIdGreaterOrGen(&s.Id, &other.Id)
 }
 
 var _ parser.Serializable = (*StreamContainer)(nil)
@@ -82,6 +110,9 @@ func NewStreamContainer() *StreamContainer {
 func ParseStreamId(id string) (StreamId, error) {
 	timeS, seqS, found := strings.Cut(id, "-")
 	if !found {
+		if id == "*" {
+			return StreamId{-1, -1}, nil
+		}
 		return StreamId{}, fmt.Errorf("`-` not found in stream id: %q", id)
 	}
 	time, err := strconv.Atoi(timeS)
@@ -90,6 +121,9 @@ func ParseStreamId(id string) (StreamId, error) {
 	}
 	seq, err := strconv.Atoi(seqS)
 	if err != nil {
+		if seqS == "*" {
+			return StreamId{time, -1}, nil
+		}
 		return StreamId{}, err
 	}
 	if seq == 0 && time == 0 {

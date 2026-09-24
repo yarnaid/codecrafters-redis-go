@@ -3,23 +3,27 @@ package storage_test
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"my-redis/app/storage"
 
 	"github.com/stretchr/testify/require"
 )
 
-func TestStreamContainer_Greater(t *testing.T) {
+func TestStreamContainer_GreaterOrGen(t *testing.T) {
 	tests := []struct {
-		id1, id2  string
-		isGreater bool
+		id1, id2    string
+		newStreamId storage.StreamId
+		isGreater   bool
 	}{
-		{"1-1", "1-1", false},
-		{"1-0", "1-1", false},
-		{"0-1", "1-1", false},
-		{"1-1", "0-1", true},
-		{"1-1", "1-0", true},
-		{"1-2", "1-1", true},
+		{"1-1", "1-1", storage.StreamId{1, 1}, false},
+		{"1-0", "1-1", storage.StreamId{1, 1}, false},
+		{"0-1", "1-1", storage.StreamId{1, 1}, false},
+		{"1-1", "0-1", storage.StreamId{0, 1}, true},
+		{"1-1", "1-0", storage.StreamId{1, 0}, true},
+		{"1-2", "1-1", storage.StreamId{1, 1}, true},
+		{"1-2", "*", storage.StreamId{int(time.Now().UnixMilli()), 0}, false},
+		{"1-2", "1-*", storage.StreamId{1, 3}, false},
 	}
 
 	for _, tt := range tests {
@@ -29,8 +33,11 @@ func TestStreamContainer_Greater(t *testing.T) {
 			require.Nil(err)
 			id2, err := storage.ParseStreamId(tt.id2)
 			require.Nil(err)
-			actual := storage.StreamIdGreater(id1, id2)
+			actual := storage.StreamIdGreaterOrGen(&id1, &id2)
 			require.Equal(tt.isGreater, actual)
+
+			require.LessOrEqual(tt.newStreamId.Time, id2.Time)
+			require.Equal(id2.Seq, tt.newStreamId.Seq)
 		})
 	}
 }

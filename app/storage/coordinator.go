@@ -303,16 +303,27 @@ func (c *Coordinator) Xadd(key, id string, kvPairs ...parser.Serializable) (stri
 	newStreamVal := &StreamContainer{Id: newId}
 	if len(stream) > 0 {
 		last := stream[len(stream)-1]
-		if !newStreamVal.Greater(last) {
-			err = InvalidStreamIdSeq{&last.Id, &newId}
+		if last.GreaterOrGen(newStreamVal) || (last.Id.Seq == newStreamVal.Id.Seq && last.Id.Time == newStreamVal.Id.Time) {
+			err = InvalidStreamIdSeq{&last.Id, &newStreamVal.Id}
 			slog.Error("invalid stream id seq", "err", err)
-			return id, err
+			return newStreamVal.Id.String(), err
 		}
 		slog.Debug("[Coordinator][Xadd] greater!", "key", key, "oldId", last.Id, "newId", newId)
 	} else {
 		slog.Debug("[Coordinator][Xadd] skipping empty list validation", "key", key)
+		if newStreamVal.Id.Time < 0 {
+			newStreamVal.Id = StreamId{int(time.Now().UnixMilli()), 0}
+		} else {
+			if newStreamVal.Id.Seq < 0 {
+				if newStreamVal.Id.Time == 0 {
+					newStreamVal.Id.Seq = 1
+				} else {
+					newStreamVal.Id.Seq = 0
+				}
+			}
+		}
 	}
 	v.Value = append(stream, newStreamVal)
 	c.backend.Set(key, &v)
-	return id, nil
+	return newStreamVal.Id.String(), nil
 }
