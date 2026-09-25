@@ -17,7 +17,7 @@ func FromInput(input []string, coordinator *storage.Coordinator) (Command, error
 		return nil, errors.New("Empty command")
 	}
 
-	switch input[0] {
+	switch strings.ToUpper(input[0]) {
 	case "PING":
 		return &PingCommand{}, nil
 	case "ECHO":
@@ -106,6 +106,14 @@ func FromInput(input []string, coordinator *storage.Coordinator) (Command, error
 
 	case "XRANGE":
 		return &XRangeCommand{C: coordinator, Key: input[1], Start: input[2], End: input[3]}, nil
+
+	case "XREAD":
+		switch strings.ToUpper(input[1]) {
+		case "STREAMS":
+			return &XReadStreamCommand{C: coordinator, Key: input[2], Id: input[3]}, nil
+		default:
+			return nil, errors.New("Unknown XREAD subcommand: " + input[1])
+		}
 
 	default:
 		return nil, errors.New("Unknown command: " + input[0])

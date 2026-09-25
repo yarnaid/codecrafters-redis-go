@@ -351,3 +351,18 @@ func (c *Coordinator) XRange(key, startId, endId string) ([]*StreamContainer, er
 	}
 	return slice, nil
 }
+
+func (c *Coordinator) XReadStreams(key, id string) ([]*StreamContainer, error) {
+	res, err := c.XRange(key, id, "+")
+	if err != nil {
+		return nil, err
+	}
+	if len(res) >= 1 {
+		excludeId, _ := ParseStreamId(id)
+		if !res[0].GreaterOrGen(&StreamContainer{Id: excludeId}, false) {
+			res = res[1:]
+		}
+		return res, nil
+	}
+	return []*StreamContainer{}, nil
+}

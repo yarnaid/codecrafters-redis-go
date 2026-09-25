@@ -6,6 +6,8 @@
         "LRANGE",
         "RPUSH",
         "stretchr",
-        "Strg"
+        "Strg",
+        "XRANGE",
+        "XREAD"
     ]
 }
