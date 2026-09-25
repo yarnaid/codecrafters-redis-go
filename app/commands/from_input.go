@@ -110,7 +110,7 @@ func FromInput(input []string, coordinator *storage.Coordinator) (Command, error
 	case "XREAD":
 		switch strings.ToUpper(input[1]) {
 		case "STREAMS":
-			return &XReadStreamCommand{C: coordinator, Key: input[2], Id: input[3]}, nil
+			return &XReadStreamCommand{C: coordinator, KeyAndIds: input[2:]}, nil
 		default:
 			return nil, errors.New("Unknown XREAD subcommand: " + input[1])
 		}
