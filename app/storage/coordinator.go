@@ -284,7 +284,7 @@ func (c *Coordinator) Type(key string) (ValueKind, error) {
 	return v.Kind, nil
 }
 
-func (c *Coordinator) Xadd(key, id string, kvPairs ...parser.Serializable) (string, error) {
+func (c *Coordinator) Xadd(key, id string, kvPairs ...string) (string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -300,10 +300,14 @@ func (c *Coordinator) Xadd(key, id string, kvPairs ...parser.Serializable) (stri
 	if err != nil {
 		return id, err
 	}
-	newStreamVal := &StreamContainer{Id: newId}
+	data := make([]StreamValue, int(len(kvPairs)/2))
+	for i := 0; i < len(kvPairs); i += 2 {
+		data[i] = StreamValue{K: kvPairs[i], V: kvPairs[i+1]}
+	}
+	newStreamVal := &StreamContainer{Id: newId, Values: data}
 	if len(stream) > 0 {
 		last := stream[len(stream)-1]
-		if last.GreaterOrGen(newStreamVal) || (last.Id.Seq == newStreamVal.Id.Seq && last.Id.Time == newStreamVal.Id.Time) {
+		if last.GreaterOrGen(newStreamVal, false) || (last.Id.Seq == newStreamVal.Id.Seq && last.Id.Time == newStreamVal.Id.Time) {
 			err = InvalidStreamIdSeq{&last.Id, &newStreamVal.Id}
 			slog.Error("invalid stream id seq", "err", err)
 			return newStreamVal.Id.String(), err
@@ -326,4 +330,24 @@ func (c *Coordinator) Xadd(key, id string, kvPairs ...parser.Serializable) (stri
 	v.Value = append(stream, newStreamVal)
 	c.backend.Set(key, &v)
 	return newStreamVal.Id.String(), nil
+}
+
+func (c *Coordinator) XRange(key, startId, endId string) ([]*StreamContainer, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	v, ok := c.backend.Get(key)
+	if !ok {
+		v = Value{Kind: KindStream, Value: make([]*StreamContainer, 0)}
+	}
+	streams, ok := v.Value.([]*StreamContainer)
+	if !ok {
+		return nil, fmt.Errorf("value %T is not slice stream containers k=%q, v=%v", v.Value, key, v.Value)
+	}
+
+	slice, err := StreamRange(streams, startId, endId)
+	if err != nil {
+		return nil, err
+	}
+	return slice, nil
 }

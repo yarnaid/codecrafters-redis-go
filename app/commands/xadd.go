@@ -9,7 +9,7 @@ type XaddCommand struct {
 	Coord  *storage.Coordinator
 	Key    string
 	Id     string
-	Values []parser.Serializable
+	Values []string
 }
 
 func (s *XaddCommand) Execute() (parser.Serializable, error) {
