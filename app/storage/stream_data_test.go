@@ -63,6 +63,7 @@ func TestStreamRange(t *testing.T) {
 		{"0-1", "0-3", storage.StreamId{0, 1}, storage.StreamId{0, 3}, false},
 		{"0-1", "1-1", storage.StreamId{0, 1}, storage.StreamId{1, 1}, false},
 		{"0-1", "0-5", storage.StreamId{0, 1}, storage.StreamId{0, 4}, false},
+		{"-", "0-5", storage.StreamId{0, 1}, storage.StreamId{0, 4}, false},
 	}
 
 	for _, tt := range tests {

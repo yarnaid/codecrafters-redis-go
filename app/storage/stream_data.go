@@ -160,15 +160,23 @@ func ParseRangeId(id string) (StreamId, error) {
 }
 
 func StreamRange(streams []*StreamContainer, startId, endId string) ([]*StreamContainer, error) {
-	start, err := ParseRangeId(startId)
-	if err != nil {
-		return nil, err
+	var start StreamId
+	var err error
+	var startRes int
+	if startId == "-" {
+		start = StreamId{}
+		startRes = 0
+	} else {
+		start, err = ParseRangeId(startId)
+		if err != nil {
+			return nil, err
+		}
+		startRes = getStreamStart(start, streams)
 	}
 	end, err := ParseRangeId(endId)
 	if err != nil {
 		return nil, err
 	}
-	startRes := getStreamStart(start, streams)
 
 	endRes := getStreamEnd(end, streams)
 
