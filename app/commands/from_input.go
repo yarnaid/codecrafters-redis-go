@@ -128,6 +128,10 @@ func FromInput(input []string, coordinator *storage.Coordinator) (Command, error
 			}
 		}
 		return cmd, nil
+
+	case "INCR":
+		return &IncrCommand{Coord: coordinator, Key: input[1]}, nil
+
 	default:
 		return nil, errors.New("Unknown command: " + input[0])
 	}

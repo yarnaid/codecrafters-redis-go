@@ -33,3 +33,11 @@ type WrongTypeError struct {
 func (w *WrongTypeError) Error() string {
 	return fmt.Sprintf("wrong type: expected=%T, got=%T", w.Required, w.Got)
 }
+
+type NotFoundError struct {
+	Key string
+}
+
+func (n *NotFoundError) Error() string {
+	return fmt.Sprintf("key=%v not found", n.Key)
+}

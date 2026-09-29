@@ -9,6 +9,7 @@ const (
 	KindList   ValueKind = "list"
 	KindStream ValueKind = "stream"
 	KindNone   ValueKind = "none"
+	KindInt    ValueKind = "int"
 )
 
 func (k ValueKind) IsValid() bool {

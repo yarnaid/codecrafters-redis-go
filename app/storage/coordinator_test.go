@@ -234,3 +234,31 @@ func TestCoordinator_BLPop2Clients(t *testing.T) {
 		}
 	})
 }
+
+func TestCoordinator_Incr(t *testing.T) {
+	key := "incr-key"
+	tests := []struct {
+		name     string
+		init     interface{}
+		expected parser.Int
+		err      error
+	}{
+		{"simple", nil, 1, nil},
+		{"simple", 100, 101, nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			c := storage.NewMemoryCoordinator(nil)
+			if tt.init != nil {
+				c.Set(key, tt.init, 0, storage.KindInt)
+			}
+			actual, err := c.Incr(key)
+			if tt.err == nil {
+				require.Nil(err)
+				require.Equal(tt.expected, actual)
+			}
+		})
+	}
+}

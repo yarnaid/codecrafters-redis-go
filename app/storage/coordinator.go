@@ -4,8 +4,11 @@ import (
 	"container/list"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"sync"
 	"time"
+
+	"my-redis/app/parser"
 )
 
 type Coordinator struct {
@@ -33,7 +36,10 @@ func (s *Coordinator) Set(key string, value interface{}, ttl time.Duration, kind
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// slog.Debug("[Coordinator][Set]", "key", key, "value", value, "ttl", ttl_ms)
+	return s.setLocked(key, value, ttl, kind)
+}
+
+func (s *Coordinator) setLocked(key string, value interface{}, ttl time.Duration, kind ValueKind) bool {
 	val := Value{Value: value, Kind: kind}
 	if ttl > 0 {
 		val.ExpireAt = time.Now().Add(ttl)
@@ -47,17 +53,21 @@ func (s *Coordinator) Get(key string) (interface{}, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
+	val, _, err := s.getLocked(key)
+	return val, err
+}
+
+func (s *Coordinator) getLocked(key string) (interface{}, *time.Time, bool) {
 	val, ok := s.backend.Get(key)
-	// slog.Debug("[Coordinator][GET] got", "key", key, "val", val, "ok", ok)
 	if !ok {
-		return nil, ok
+		return nil, nil, ok
 	}
 	if val.IsExpired() {
 		slog.Debug("[Coordinator][GET] expired", "ago", time.Since(val.ExpireAt))
 		s.backend.Delete(key)
-		return nil, false
+		return nil, nil, false
 	}
-	return val.Value, true
+	return val.Value, &val.ExpireAt, true
 }
 
 func (c *Coordinator) Type(key string) (ValueKind, error) {
@@ -74,10 +84,36 @@ func (c *Coordinator) Type(key string) (ValueKind, error) {
 	return v.Kind, nil
 }
 
-// deref returns *p, or the string "<nil>" for logging purposes.
-func deref[T any](p *T) any {
-	if p == nil {
-		return "<nil>"
+func (c *Coordinator) Incr(key string) (parser.Int, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	val, expire_at, ok := c.getLocked(key)
+	if !ok {
+		val = int(0)
 	}
-	return *p
+	var val_int int
+	switch v := val.(type) {
+	case string:
+		var err error
+		val_int, err = strconv.Atoi(v)
+		if err != nil {
+			return 0, err
+		}
+	case int:
+		val_int = v
+	default:
+		return 0, &WrongTypeError{Got: val, Required: ""}
+	}
+	val_int++
+	var ttl time.Duration
+	if expire_at != nil {
+		ttl = time.Until(*expire_at)
+	} else {
+		ttl = 0
+	}
+	ok = c.setLocked(key, val_int, ttl, KindInt)
+	if !ok {
+		return 0, fmt.Errorf("cannot set value=%d for key=%v", val_int, key)
+	}
+	return parser.Int(val_int), nil
 }
