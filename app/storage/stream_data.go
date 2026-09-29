@@ -3,6 +3,7 @@ package storage
 import (
 	"cmp"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -40,7 +41,7 @@ func (z ZeroStreamId) Error() string {
 }
 
 func (i InvalidStreamIdSeq) Error() string {
-	return fmt.Sprintf("wrong streamId seq: %v -> %v", i.Id1, i.Id2)
+	return fmt.Sprintf("wrong streamId seq: %v -> %v", *i.Id1, *i.Id2)
 }
 
 func StreamIdGreaterOrGen(id1, id2 *StreamId, eq bool) bool {
@@ -181,7 +182,10 @@ func StreamRange(streams []*StreamContainer, startId, endId string) ([]*StreamCo
 		}
 		endRes = getStreamEnd(end, streams)
 	}
-
+	slog.Debug("[StreamRange]", "startId", startId, "endId", endId, "startRes", startRes, "endRes", endRes)
+	if startRes < 0 || endRes < 0 {
+		return []*StreamContainer{}, nil
+	}
 	return streams[startRes : endRes+1], nil
 }
 
@@ -204,4 +208,17 @@ func getStreamStart(start StreamId, streams []*StreamContainer) int {
 		}
 	}
 	return len(streams) - 1
+}
+
+func entriesAfter(stream []*StreamContainer, startId StreamId) []*StreamContainer {
+	if len(stream) < 1 {
+		return stream
+	}
+	start := getStreamStart(startId, stream)
+	firstId := stream[0].Id
+	var first int
+	if !StreamIdGreaterOrGen(&firstId, &startId, false) {
+		first = 1
+	}
+	return stream[start+first:]
 }

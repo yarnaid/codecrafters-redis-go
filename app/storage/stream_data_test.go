@@ -77,3 +77,28 @@ func TestStreamRange(t *testing.T) {
 		})
 	}
 }
+
+func TestEntriesAfter(t *testing.T) {
+	data := []*storage.StreamContainer{
+		{Id: storage.StreamId{0, 1}, Values: make([]storage.StreamValue, 0)},
+		{Id: storage.StreamId{0, 2}, Values: make([]storage.StreamValue, 0)},
+		{Id: storage.StreamId{0, 3}, Values: make([]storage.StreamValue, 0)},
+	}
+
+	tests := []struct {
+		after    storage.StreamId
+		expected []*storage.StreamContainer
+	}{
+		{storage.StreamId{0, 0}, data[:]},
+		{storage.StreamId{0, 1}, data[1:]},
+		{storage.StreamId{0, 2}, data[2:]},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.after.String(), func(t *testing.T) {
+			require := require.New(t)
+			res := storage.EntriesAfter(data, tt.after)
+			require.EqualValues(tt.expected, res, "got result: %v", storage.PointersToValues(res))
+		})
+	}
+}

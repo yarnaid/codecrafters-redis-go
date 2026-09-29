@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"time"
+
 	"my-redis/app/parser"
 	"my-redis/app/storage"
 )
@@ -8,6 +10,7 @@ import (
 type XReadStreamCommand struct {
 	C         *storage.Coordinator
 	KeyAndIds []string
+	Timeout   *time.Duration
 	ln        int
 }
 
@@ -17,9 +20,18 @@ func (l *XReadStreamCommand) Execute() (parser.Serializable, error) {
 	for i := range l.ln {
 		r, err := l.processKey(i)
 		if err != nil {
-			return nil, err
+			switch err.(type) {
+			case *storage.TimeoutError:
+				res[i] = parser.NullArray(0)
+				continue
+			default:
+				return nil, err
+			}
 		}
 		res[i] = r
+	}
+	if len(res) == 1 && res[0] == parser.NullArray(0) {
+		return res[0], nil
 	}
 	return res, nil
 }
@@ -27,7 +39,7 @@ func (l *XReadStreamCommand) Execute() (parser.Serializable, error) {
 func (l *XReadStreamCommand) processKey(i int) (parser.Serializable, error) {
 	k := l.KeyAndIds[i]
 	id := l.KeyAndIds[l.ln+i]
-	slice, err := l.C.XReadStreams(k, id)
+	slice, err := l.C.XReadStreams(k, id, l.Timeout)
 	if err != nil {
 		return nil, err
 	}

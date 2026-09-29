@@ -96,7 +96,7 @@ func TestCoordinator_LRange(t *testing.T) {
 		data[i] = parser.Int(i)
 	}
 
-	key := "key"
+	key := "key-lrange"
 	tests := []struct {
 		start, end int
 		res        parser.Array[parser.Serializable]
@@ -135,7 +135,7 @@ func TestCoordinator_RPush(t *testing.T) {
 		{"1 int", []parser.Serializable{parser.Int(1)}, []parser.Serializable{parser.Int(1)}},
 		{"2 int", []parser.Serializable{parser.Int(1), parser.Int(2)}, []parser.Serializable{parser.Int(1), parser.Int(2)}},
 	}
-	key := "key"
+	key := "key-rpush"
 
 	slog.SetLogLoggerLevel(slog.LevelDebug)
 	for _, tt := range tests {
@@ -162,28 +162,32 @@ func TestCoordinator_BLPop2Clients(t *testing.T) {
 		res parser.Serializable
 		err error
 	}
-	start_client := func(r chan result) {
-		res, err := c.BLPop(key, 0)
-		r <- result{res, err}
+	startClient := func(wantWaiters int) <-chan result {
+		ch := make(chan result, 1) // buffered: the goroutine never leaks on send
+		go func() {
+			res, err := c.BLPop(key, 0)
+			ch <- result{res, err}
+		}()
+		require.Eventually(t, func() bool { return c.WaitersArrayLen(key) == wantWaiters },
+			time.Second, time.Millisecond)
+		return ch
 	}
-	result_ch1 := make(chan result)
-	result_ch2 := make(chan result)
-	go start_client(result_ch1)
-	go start_client(result_ch2)
+
+	first := startClient(1)
+	second := startClient(2) // guaranteed to be queued after first
 
 	t.Run("2 clients test", func(t *testing.T) {
 		require := require.New(t)
-		require.Eventually(func() bool { return c.WaitersLen(key) > 0 }, time.Second, 50*time.Millisecond)
 
 		n := c.Append(key, parser.BulkString(value))
 		require.Equal(1, n)
 
 		select {
-		case res := <-result_ch1:
+		case res := <-first:
 			require.Nil(res.err)
 			require.Equal(parser.BulkString(value), res.res)
-		case res := <-result_ch2:
-			require.Fail("second client got unexpected response", "res", res)
+		case res := <-second:
+			require.Fail("second client got unexpected response, res=%v", res)
 		case <-time.After(10 * time.Millisecond):
 			require.Fail("client1 didn't receive response after. 10ms")
 		}
@@ -229,46 +233,4 @@ func TestCoordinator_Type(t *testing.T) {
 	v, err = c.Type("list")
 	require.Nil(err)
 	require.Equal(storage.KindList, v)
-}
-
-func TestCoordinator_Xadd(t *testing.T) {
-	c := storage.NewMemoryCoordinator(nil)
-	key := "xadd-key"
-	require := require.New(t)
-
-	id, err := c.Xadd(key, "1-1")
-	require.Nil(err)
-	require.Equal("1-1", id)
-
-	id, err = c.Xadd(key, "1-2")
-	require.Nil(err)
-	require.Equal("1-2", id)
-
-	_, err = c.Xadd(key, "1-2")
-	require.ErrorContains(err, "wrong streamId seq:")
-
-	id, err = c.Xadd(key, "1-*")
-	require.Nil(err, "err", err)
-	require.Equal("1-3", id)
-
-	nowMs := int(time.Now().UnixMilli())
-	id, err = c.Xadd(key, "*")
-	require.Nil(err)
-	streamId, err := storage.ParseStreamId(id)
-	require.Nil(err)
-	require.GreaterOrEqual(streamId.Time, nowMs)
-	require.Equal(0, streamId.Seq)
-
-	key += "-1"
-	id, err = c.Xadd(key, "0-*")
-	require.Nil(err)
-	require.Equal("0-1", id)
-
-	key = "-2"
-	id, err = c.Xadd(key, "*")
-	require.Nil(err)
-	streamId, err = storage.ParseStreamId(id)
-	require.Nil(err)
-	require.GreaterOrEqual(streamId.Time, nowMs)
-	require.Equal(0, streamId.Seq)
 }

@@ -17,7 +17,7 @@ type (
 )
 
 func TestBLPopSimple(t *testing.T) {
-	key := "key"
+	key := "key-blpop"
 	tests := []struct {
 		name        string
 		backend     func() Be
@@ -48,7 +48,7 @@ func TestBLPopSimple(t *testing.T) {
 
 			res_ch := make(chan result, 1)
 			go func() {
-				cmd_res, err := BLPop{coordinator, "key", tt.timeout}.Execute()
+				cmd_res, err := BLPop{coordinator, key, tt.timeout}.Execute()
 				res_ch <- result{cmd_res, err}
 				slog.Debug("[test][blpop] value received", "res", cmd_res, "err", err)
 			}()
@@ -59,7 +59,7 @@ func TestBLPopSimple(t *testing.T) {
 				if !tt.wantErr {
 					require.Nil(res.err)
 					if !tt.wantTimeout {
-						require.EqualValues(parser.Array[parser.Serializable]{parser.BulkString("key"), parser.BulkString(tt.result)}, res.res)
+						require.EqualValues(parser.Array[parser.Serializable]{parser.BulkString(key), parser.BulkString(tt.result)}, res.res)
 					} else {
 						require.EqualValues(parser.NullArray(0), res.res)
 					}
