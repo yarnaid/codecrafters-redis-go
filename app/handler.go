@@ -21,6 +21,7 @@ type RW interface {
 type Handler struct {
 	Conn        RW
 	Coordinator *storage.Coordinator
+	Queue       []*commands.Command
 }
 
 func (h *Handler) SetConn(conn RW) {
@@ -30,6 +31,7 @@ func (h *Handler) SetConn(conn RW) {
 func (h *Handler) HandleConnection() {
 	logger.Info("Handling new connection...")
 	defer h.Conn.Close()
+	h.Queue = make([]*commands.Command, 0)
 
 	for {
 		var buf [BUFFER_SIZE]byte
