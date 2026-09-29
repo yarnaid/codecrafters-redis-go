@@ -241,12 +241,12 @@ func TestCoordinator_Incr(t *testing.T) {
 		name     string
 		init     interface{}
 		expected parser.Int
-		err      error
+		err      any
 	}{
 		{"simple", nil, 1, nil},
 		{"simple", 100, 101, nil},
 		{"simple", 1, 2, nil},
-		{"simple", 2, 3, nil},
+		{"simple", "not a number", 3, new(*storage.WrongTypeError)},
 	}
 
 	for _, tt := range tests {
@@ -260,6 +260,9 @@ func TestCoordinator_Incr(t *testing.T) {
 			if tt.err == nil {
 				require.Nil(err)
 				require.Equal(tt.expected, actual)
+			} else {
+				require.ErrorContains(err, "wrong type")
+				require.ErrorAs(err, tt.err)
 			}
 		})
 	}

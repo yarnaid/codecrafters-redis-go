@@ -97,7 +97,12 @@ func (c *Coordinator) Incr(key string) (parser.Int, error) {
 		var err error
 		val_int, err = strconv.Atoi(v)
 		if err != nil {
-			return 0, err
+			switch err.(type) {
+			case *strconv.NumError:
+				return 0, &WrongTypeError{Got: "", Required: int(0)}
+			default:
+				return 0, err
+			}
 		}
 	case int:
 		val_int = v
