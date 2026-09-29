@@ -132,6 +132,9 @@ func FromInput(input []string, coordinator *storage.Coordinator) (Command, error
 	case "MULTI":
 		return &MultiCommand{}, nil
 
+	case "EXEC":
+		return &ExecCommand{InTransaction: false}, nil
+
 	case "INCR":
 		return &IncrCommand{Coord: coordinator, Key: input[1]}, nil
 
