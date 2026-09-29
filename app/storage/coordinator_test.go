@@ -245,6 +245,8 @@ func TestCoordinator_Incr(t *testing.T) {
 	}{
 		{"simple", nil, 1, nil},
 		{"simple", 100, 101, nil},
+		{"simple", 1, 2, nil},
+		{"simple", 2, 3, nil},
 	}
 
 	for _, tt := range tests {

@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"strconv"
 
 	"my-redis/app/parser"
 	"my-redis/app/storage"
@@ -16,13 +17,13 @@ func (e *NotFoundError) Error() string {
 }
 
 type GetCommand struct {
-	Strg *storage.Coordinator
-	Key  string
+	Coordinator *storage.Coordinator
+	Key         string
 }
 
 func (c *GetCommand) Execute() (parser.Serializable, error) {
 	// slog.Debug("[Command][GET]", "key", c.Key)
-	val, ok := c.Strg.Get(c.Key)
+	val, ok := c.Coordinator.Get(c.Key)
 	if !ok {
 		// slog.Debug("[Command][GET] value is not received", "key", c.Key)
 		return parser.BulkNullString(""), nil
@@ -34,7 +35,7 @@ func (c *GetCommand) Execute() (parser.Serializable, error) {
 		return parser.BulkString(val), nil
 	case int:
 		// slog.Debug("[Command][GET]", "int", val)
-		return parser.Int(val), nil
+		return parser.BulkString(strconv.FormatInt(int64(val), 10)), nil
 	default:
 		return nil, fmt.Errorf("unsupported type %T", val)
 	}

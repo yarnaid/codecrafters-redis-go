@@ -30,7 +30,7 @@ func FromInput(input []string, coordinator *storage.Coordinator) (Command, error
 			return nil, errors.New("GET command requires a key")
 		}
 
-		return &GetCommand{Strg: coordinator, Key: input[1]}, nil
+		return &GetCommand{Coordinator: coordinator, Key: input[1]}, nil
 	case "SET":
 		switch len(input) {
 		case 3:

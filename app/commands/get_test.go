@@ -46,12 +46,9 @@ func TestGetCommand_Execute(t *testing.T) {
 				// slog.Debug("GET cmd executed", "got", got, "gotErr", gotErr)
 				if !v.wantErr {
 					assert.Nil(gotErr)
-					switch vv := v.Value.(type) {
-					case int:
-						require.Equal(parser.Int(vv), got)
-					case string:
-						require.Equal(parser.BulkString(vv), got)
-					}
+					vv, ok := v.Value.(parser.BulkString)
+					require.True(ok)
+					require.Equal(parser.BulkString(vv), got)
 
 					if v.TTL > 0 {
 						time.Sleep(v.TTL + time.Millisecond)
