@@ -118,7 +118,9 @@ func NewStreamContainer() *StreamContainer {
 func ParseStreamId(id string) (StreamId, error) {
 	timeS, seqS, found := strings.Cut(id, "-")
 	if !found {
-		if id == "*" {
+
+		switch id {
+		case "*", "$":
 			return StreamId{-1, -1}, nil
 		}
 		return StreamId{}, fmt.Errorf("`-` not found in stream id: %q", id)

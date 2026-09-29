@@ -153,47 +153,6 @@ func TestCoordinator_RPush(t *testing.T) {
 	}
 }
 
-func TestCoordinator_BLPop2Clients(t *testing.T) {
-	c := storage.NewMemoryCoordinator(nil)
-	key := "coord-bl-pop-key"
-	value := "coord-bl-pop-value"
-
-	type result struct {
-		res parser.Serializable
-		err error
-	}
-	startClient := func(wantWaiters int) <-chan result {
-		ch := make(chan result, 1) // buffered: the goroutine never leaks on send
-		go func() {
-			res, err := c.BLPop(key, 0)
-			ch <- result{res, err}
-		}()
-		require.Eventually(t, func() bool { return c.WaitersArrayLen(key) == wantWaiters },
-			time.Second, time.Millisecond)
-		return ch
-	}
-
-	first := startClient(1)
-	second := startClient(2) // guaranteed to be queued after first
-
-	t.Run("2 clients test", func(t *testing.T) {
-		require := require.New(t)
-
-		n := c.Append(key, parser.BulkString(value))
-		require.Equal(1, n)
-
-		select {
-		case res := <-first:
-			require.Nil(res.err)
-			require.Equal(parser.BulkString(value), res.res)
-		case res := <-second:
-			require.Fail("second client got unexpected response, res=%v", res)
-		case <-time.After(10 * time.Millisecond):
-			require.Fail("client1 didn't receive response after. 10ms")
-		}
-	})
-}
-
 func TestCoordinator_LLen(t *testing.T) {
 	key := "coord-llen-key"
 	tests := []struct {
@@ -233,4 +192,45 @@ func TestCoordinator_Type(t *testing.T) {
 	v, err = c.Type("list")
 	require.Nil(err)
 	require.Equal(storage.KindList, v)
+}
+
+func TestCoordinator_BLPop2Clients(t *testing.T) {
+	c := storage.NewMemoryCoordinator(nil)
+	key := "coord-bl-pop-key"
+	value := "coord-bl-pop-value"
+
+	type result struct {
+		res parser.Serializable
+		err error
+	}
+	startClient := func(wantWaiters int) <-chan result {
+		ch := make(chan result, 1) // buffered: the goroutine never leaks on send
+		go func() {
+			res, err := c.BLPop(key, 0)
+			ch <- result{res, err}
+		}()
+		require.Eventually(t, func() bool { return c.WaitersArrayLen(key) == wantWaiters },
+			time.Second, time.Millisecond)
+		return ch
+	}
+
+	first := startClient(1)
+	second := startClient(2) // guaranteed to be queued after first
+
+	t.Run("2 clients test", func(t *testing.T) {
+		require := require.New(t)
+
+		n := c.Append(key, parser.BulkString(value))
+		require.Equal(1, n)
+
+		select {
+		case res := <-first:
+			require.Nil(res.err)
+			require.Equal(parser.BulkString(value), res.res)
+		case res := <-second:
+			require.Fail("second client got unexpected response, res=%v", res)
+		case <-time.After(10 * time.Millisecond):
+			require.Fail("client1 didn't receive response after. 10ms")
+		}
+	})
 }

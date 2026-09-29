@@ -138,6 +138,14 @@ func (c *Coordinator) XReadStreams(key, id string, timeout *time.Duration) ([]*S
 
 	c.mu.Lock()
 	stream, err := c.streamLocked(key)
+	if start.Time == -1 {
+		if len(stream) == 0 {
+			start = StreamId{0, 0}
+		} else {
+			last := stream[len(stream)-1]
+			start = last.Id
+		}
+	}
 	if err != nil {
 		c.mu.Unlock()
 		return nil, err
