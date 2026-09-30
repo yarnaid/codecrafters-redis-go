@@ -102,7 +102,7 @@ func (h *Handler) process_command(buf []byte) {
 		response, err = command.Execute()
 		h.WatchList = h.WatchList[:0]
 	case *commands.InfoCommand:
-		response, err = parser.ToSerializable(parser.Array[parser.BulkString]{"role:master"}), nil
+		response, err = parser.ToSerializable(parser.BulkNullString("role:master")), nil
 	case *commands.DiscardCommand:
 		response, err = command.Execute()
 		h.finishTx()
