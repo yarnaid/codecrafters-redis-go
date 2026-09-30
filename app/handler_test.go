@@ -87,6 +87,13 @@ func TestHandlerSeq(t *testing.T) {
 			{cmd: []string{"SET", "key", "41"}, res: func() []byte { return []byte("+QUEUED\r\n") }},
 			{cmd: []string{"INCR", "key"}, res: func() []byte { return []byte("+QUEUED\r\n") }},
 			{cmd: []string{"EXEC"}, res: func() []byte { return []byte("*2\r\n+OK\r\n:42\r\n") }},
+			{cmd: []string{"EXEC"}, res: func() []byte { res, _ := parser.SimpleError("ERR EXEC without MULTI").Serialize(); return res }},
+		}},
+		{"discard", []cmdAndRes{
+			{cmd: []string{"MULTI"}, res: func() []byte { return []byte("+OK\r\n") }},
+			{cmd: []string{"DISCARD"}, res: func() []byte { return []byte("+OK\r\n") }},
+			{cmd: []string{"DISCARD"}, res: func() []byte { res, _ := parser.SimpleError("ERR DISCARD without MULTI").Serialize(); return res }},
+			{cmd: []string{"EXEC"}, res: func() []byte { res, _ := parser.SimpleError("ERR EXEC without MULTI").Serialize(); return res }},
 		}},
 	}
 

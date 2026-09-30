@@ -135,6 +135,9 @@ func FromInput(input []string, coordinator *storage.Coordinator, txStarted bool)
 	case "EXEC":
 		return &ExecCommand{InTransaction: txStarted}, nil
 
+	case "DISCARD":
+		return &DiscardCommand{TxStarted: txStarted}, nil
+
 	case "INCR":
 		return &IncrCommand{Coord: coordinator, Key: input[1]}, nil
 
