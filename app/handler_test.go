@@ -23,6 +23,7 @@ func TestHandler(t *testing.T) {
 		{"echo", []byte("*2\r\n$4\r\nECHO\r\n$11\r\nhello world\r\n"), []byte("$11\r\nhello world\r\n")},
 		{"echo", []byte("*2\r\n$4\r\nECHO\r\n$9\r\npineapple\r\n"), []byte("$9\r\npineapple\r\n")},
 		{"set", []byte("*3\r\n$3\r\nSET\r\n$3\r\nKEY\r\n$3\r\n123\r\n"), []byte("+OK\r\n")},
+		{"watch", []byte("*3\r\n$5\r\nWATCH\r\n$4\r\nKEY1\r\n$4\r\nKEY2\r\n"), []byte("+OK\r\n")},
 		{"rpush", []byte("*3\r\n$5\r\nRPUSH\r\n$3\r\nKEY\r\n$3\r\n123\r\n"), []byte(":1\r\n")},
 		{"set with PX", []byte("*5\r\n$3\r\nSET\r\n$10\r\nstrawberry\r\n$6\r\nbanana\r\n$2\r\nPX\r\n$3\r\n100\r\n"), []byte("+OK\r\n")},
 		{"multi", []byte("*1\r\n$5\r\nMULTI\r\n"), []byte("+OK\r\n")},
