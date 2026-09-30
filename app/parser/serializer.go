@@ -102,6 +102,12 @@ func ToSerializable(val interface{}) Serializable {
 			res[i] = Int(v)
 		}
 		return res
+	case []string:
+		res := make(Array[Serializable], len(val))
+		for i, v := range val {
+			res[i] = BulkString(v)
+		}
+		return res
 	case []interface{}:
 		res := make(Array[Serializable], len(val))
 		for i, v := range val {

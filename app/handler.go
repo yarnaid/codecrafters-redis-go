@@ -31,6 +31,7 @@ type Handler struct {
 	WatchList          []WatchItem
 	TxWait             *sync.WaitGroup
 	Cfg                *config
+	serverState        *serverState
 }
 
 func (h *Handler) SetConn(conn RW) {
@@ -103,11 +104,7 @@ func (h *Handler) process_command(buf []byte) {
 		response, err = command.Execute()
 		h.WatchList = h.WatchList[:0]
 	case *commands.InfoCommand:
-		if h.Cfg.replicaof != "" {
-			response, err = parser.BulkString("role:slave"), nil
-		} else {
-			response, err = parser.BulkString("role:master"), nil
-		}
+		response, err = h.serverState.toBulkString(), nil
 	case *commands.DiscardCommand:
 		response, err = command.Execute()
 		h.finishTx()
