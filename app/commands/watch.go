@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"fmt"
+
 	"my-redis/app/parser"
 	"my-redis/app/storage"
 )
@@ -8,9 +10,13 @@ import (
 type Watch struct {
 	Coordinator *storage.Coordinator
 	Keys        []string
+	InTx        bool
 }
 
 func (w *Watch) Execute() (parser.Serializable, error) {
+	if w.InTx {
+		return nil, fmt.Errorf("ERR WATCH inside MULTI is not allowed")
+	}
 	return parser.SimpleString("OK"), nil
 }
 

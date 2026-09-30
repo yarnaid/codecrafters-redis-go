@@ -73,6 +73,8 @@ func (h *Handler) process_command(buf []byte) {
 
 	var response parser.Serializable
 	switch c := command.(type) {
+	case *commands.Watch:
+		response, err = c.Execute()
 	case *commands.MultiCommand:
 		h.TransactionStarted = true
 		slog.Debug("[Handler] transaction started", "tx", h.TransactionStarted)

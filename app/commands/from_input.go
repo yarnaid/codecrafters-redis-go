@@ -142,7 +142,7 @@ func FromInput(input []string, coordinator *storage.Coordinator, txStarted bool)
 		return &IncrCommand{Coord: coordinator, Key: input[1]}, nil
 
 	case "WATCH":
-		return &Watch{Coordinator: coordinator, Keys: input[1:]}, nil
+		return &Watch{Coordinator: coordinator, Keys: input[1:], InTx: txStarted}, nil
 
 	default:
 		return nil, errors.New("Unknown command: " + input[0])

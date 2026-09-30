@@ -96,6 +96,14 @@ func TestHandlerSeq(t *testing.T) {
 			{cmd: []string{"DISCARD"}, res: func() []byte { res, _ := parser.SimpleError("ERR DISCARD without MULTI").Serialize(); return res }},
 			{cmd: []string{"EXEC"}, res: func() []byte { res, _ := parser.SimpleError("ERR EXEC without MULTI").Serialize(); return res }},
 		}},
+		{"watch", []cmdAndRes{
+			{cmd: []string{"WATCH", "watch-key1", "watch-key2"}, res: func() []byte { return []byte("+OK\r\n") }},
+			{cmd: []string{"MULTI"}, res: func() []byte { return []byte("+OK\r\n") }},
+			{cmd: []string{"WATCH", "watch-key3"}, res: func() []byte {
+				res, _ := parser.SimpleError("ERR WATCH inside MULTI is not allowed").Serialize()
+				return res
+			}},
+		}},
 	}
 
 	for _, tt := range tests {
