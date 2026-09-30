@@ -148,7 +148,7 @@ func FromInput(input []string, coordinator *storage.Coordinator, txStarted bool)
 		return &UnwatchCommand{}, nil
 
 	case "INFO":
-		if strings.ToUpper(input[1]) == "replication" {
+		if strings.ToLower(input[1]) == "replication" {
 			return &InfoCommand{}, nil
 		}
 		return &UnwatchCommand{}, &InvalidCommandError{input[0], input[1:]}
