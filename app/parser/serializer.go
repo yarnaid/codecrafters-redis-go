@@ -118,3 +118,11 @@ func ToSerializable(val interface{}) Serializable {
 		panic(fmt.Sprintf("Not supported type for serializable: %T; %v", val, val))
 	}
 }
+
+func CommandFromStrings(s ...string) Array[BulkString] {
+	res := make(Array[BulkString], len(s))
+	for i := range s {
+		res[i] = BulkString(s[i])
+	}
+	return res
+}

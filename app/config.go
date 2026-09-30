@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/netip"
 	"strconv"
+	"strings"
 
 	"github.com/peterbourgon/ff/fftoml"
 	"github.com/peterbourgon/ff/v3"
@@ -26,10 +27,20 @@ func (p *port) UnmarshalText(b []byte) error {
 	return nil
 }
 
+type master struct {
+	bind netip.Addr
+	port port
+}
+
+func (c *master) listenAddr() netip.AddrPort {
+	return netip.AddrPortFrom(c.bind, uint16(c.port))
+}
+
 type config struct {
 	bind      netip.Addr
 	port      port
 	replicaof string
+	master    *master
 }
 
 func (c config) listenAddr() netip.AddrPort {
@@ -58,6 +69,28 @@ func parseConfig(args []string) (config, error) {
 		ff.WithEnvVarPrefix("REDIS"),
 	); err != nil {
 		return cfg, err
+	}
+
+	if cfg.replicaof != "" {
+		s := strings.Split(cfg.replicaof, " ")
+		pp := port(0)
+		p := &pp
+		err := p.UnmarshalText([]byte(s[1]))
+		if err != nil {
+			return cfg, fmt.Errorf("parsing master addr bytes: %w", err)
+		}
+		if s[0] == "localhost" {
+			s[0] = "127.0.0.1"
+		}
+		a, err := netip.ParseAddr(s[0])
+		if err != nil {
+			return cfg, fmt.Errorf("parsing master addr to ip: %w", err)
+		}
+		master := master{
+			bind: a,
+			port: *p,
+		}
+		cfg.master = &master
 	}
 	cfg.bind = cfg.bind.Unmap()
 	err := cfg.validate()
