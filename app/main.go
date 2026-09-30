@@ -14,19 +14,20 @@ var (
 	_ = os.Exit
 )
 
-var cfg = Config{
-	address: "0.0.0.0",
-	port:    "6379",
-}
-
 func main() {
 	logger.Info("Logs from your program will appear here!")
 	coordinator := storage.NewMemoryCoordinator(nil)
 	globalWait := sync.WaitGroup{}
-
-	l, err := net.Listen("tcp", cfg.address+":"+cfg.port)
+	cfg, err := parseConfig(os.Args[1:])
 	if err != nil {
-		logger.Error("Failed to bind", "address", cfg.address, "port", cfg.port, "error", err.Error())
+		logger.Error("error parsing config", err)
+		return
+	}
+
+	l, err := net.Listen("tcp", cfg.listenAddr().String())
+	logger.Debug("[server] start listening", "addr", cfg.bind.String(), "port", cfg.port)
+	if err != nil {
+		logger.Error("Failed to bind: %v\ncfg=%c", err, cfg)
 		os.Exit(1)
 	}
 	for {
