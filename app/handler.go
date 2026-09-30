@@ -72,15 +72,34 @@ func (h *Handler) process_command(buf []byte) {
 	}
 
 	var response parser.Serializable
-	switch command.(type) {
+	switch c := command.(type) {
 	case *commands.MultiCommand:
 		h.TransactionStarted = true
-		slog.Debug("[Handler] transaction started")
+		slog.Debug("[Handler] transaction started", "tx", h.TransactionStarted)
 		response, err = command.Execute()
 	case *commands.ExecCommand:
-		slog.Debug("[Handler] transaction exec")
-		h.TransactionStarted = false
-		response, err = command.Execute()
+		slog.Debug("[Handler] transaction exec", "tx", h.TransactionStarted, "cmd.tx", c.InTransaction)
+		if !h.TransactionStarted {
+			response, err = parser.SimpleError("ERR EXEC without MULTI"), nil
+		} else {
+			h.TransactionStarted = false
+			response, err = command.Execute()
+			if err == nil {
+				responses := make(parser.Array[parser.Serializable], len(h.Queue))
+				for i, cmd := range h.Queue {
+					r, e := cmd.Execute()
+					if e != nil {
+						responses[i] = parser.SimpleError(e.Error())
+					} else {
+						responses[i] = r
+					}
+				}
+				response = responses
+				clear(h.Queue)
+				h.Queue = h.Queue[:0]
+			}
+		}
+
 	default:
 		if h.TransactionStarted {
 			h.Queue = append(h.Queue, command)
