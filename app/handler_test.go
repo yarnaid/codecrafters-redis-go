@@ -79,6 +79,7 @@ func TestHandlerSeq(t *testing.T) {
 		{"echo", []cmdAndRes{{cmd: []string{"ECHO", "123"}, res: func() []byte { return []byte("$3\r\n123\r\n") }}}},
 		{"empty tx", []cmdAndRes{
 			{cmd: []string{"MULTI"}, res: func() []byte { return []byte("+OK\r\n") }},
+			{cmd: []string{"SET", "key", "value"}, res: func() []byte { return []byte("+QUEUED\r\n") }},
 			{cmd: []string{"EXEC"}, res: func() []byte { res, _ := parser.Array[parser.Serializable]{}.Serialize(); return res }},
 		}},
 	}

@@ -22,7 +22,7 @@ type RW interface {
 type Handler struct {
 	Conn               RW
 	Coordinator        *storage.Coordinator
-	Queue              []*commands.Command
+	Queue              []commands.Command
 	TransactionStarted bool
 }
 
@@ -33,7 +33,7 @@ func (h *Handler) SetConn(conn RW) {
 func (h *Handler) HandleConnection() {
 	logger.Info("Handling new connection...")
 	defer h.Conn.Close()
-	h.Queue = make([]*commands.Command, 0)
+	h.Queue = make([]commands.Command, 0)
 
 	for {
 		var buf [BUFFER_SIZE]byte
@@ -71,16 +71,25 @@ func (h *Handler) process_command(buf []byte) {
 		return
 	}
 
+	var response parser.Serializable
 	switch command.(type) {
 	case *commands.MultiCommand:
 		h.TransactionStarted = true
 		slog.Debug("[Handler] transaction started")
+		response, err = command.Execute()
 	case *commands.ExecCommand:
 		slog.Debug("[Handler] transaction exec")
 		h.TransactionStarted = false
+		response, err = command.Execute()
+	default:
+		if h.TransactionStarted {
+			h.Queue = append(h.Queue, command)
+			response = parser.SimpleString("QUEUED")
+		} else {
+			response, err = command.Execute()
+		}
 	}
 
-	response, err := command.Execute()
 	if err != nil {
 		logger.Error("Error executing command", "error", err.Error())
 		h.send_error_response("Error executing command", err)
