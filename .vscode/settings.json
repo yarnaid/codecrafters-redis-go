@@ -4,6 +4,7 @@
         "codecrafters",
         "LPUSH",
         "LRANGE",
+        "replicaof",
         "RPUSH",
         "stretchr",
         "Strg",

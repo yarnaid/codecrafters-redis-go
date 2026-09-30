@@ -153,6 +153,9 @@ func FromInput(input []string, coordinator *storage.Coordinator, txStarted bool)
 		}
 		return &UnwatchCommand{}, &InvalidCommandError{input[0], input[1:]}
 
+	case "COMMAND":
+		return &InfoCommand{}, nil
+
 	default:
 		return nil, &UnknownCommandError{input[0]}
 	}

@@ -25,7 +25,7 @@ func main() {
 	}
 
 	l, err := net.Listen("tcp", cfg.listenAddr().String())
-	logger.Debug("[server] start listening", "addr", cfg.bind.String(), "port", cfg.port)
+	logger.Debug("[server] start listening", "addr", cfg.bind.String(), "port", cfg.port, "replica", cfg.replicaof)
 	if err != nil {
 		logger.Error("Failed to bind: %v\ncfg=%c", err.Error(), cfg)
 		os.Exit(1)
@@ -36,7 +36,7 @@ func main() {
 			logger.Error("Error accepting connection", "error", err.Error())
 			os.Exit(1)
 		}
-		handler := Handler{Conn: conn, Coordinator: coordinator, TxWait: &globalWait, Cfg: cfg}
+		handler := Handler{Conn: conn, Coordinator: coordinator, TxWait: &globalWait, Cfg: &cfg}
 		go handler.HandleConnection()
 	}
 }

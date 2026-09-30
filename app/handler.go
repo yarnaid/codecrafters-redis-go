@@ -30,7 +30,7 @@ type Handler struct {
 	TransactionStarted bool
 	WatchList          []WatchItem
 	TxWait             *sync.WaitGroup
-	Cfg                config
+	Cfg                *config
 }
 
 func (h *Handler) SetConn(conn RW) {

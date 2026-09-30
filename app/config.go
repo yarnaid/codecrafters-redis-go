@@ -48,7 +48,7 @@ func parseConfig(args []string) (config, error) {
 
 	fs := flag.NewFlagSet("redis", flag.ContinueOnError)
 	fs.String("config", "", "TOML config file (optional)")
-	fs.String("replicaof", "", "master server for replication")
+	fs.StringVar(&cfg.replicaof, "replicaof", "", "master server for replication")
 	fs.TextVar(&cfg.bind, "bind", netip.MustParseAddr("127.0.0.1"), "bind IP address")
 	fs.TextVar(&cfg.port, "port", port(6379), "listen port")
 	if err := ff.Parse(
