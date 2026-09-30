@@ -36,6 +36,8 @@ func TestSetCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := storage.NewMemoryCoordinator(nil)
+			expVersion := len(tt.args)
+			var wantTimeout bool
 			for _, ttt := range tt.args {
 				cmd := SetCommand{s, ttt.Key, ttt.Value, ttt.TTL}
 				res, err := cmd.Execute()
@@ -50,7 +52,12 @@ func TestSetCommand(t *testing.T) {
 					s_val, ok = s.Get(ttt.Key)
 					require.False(ok, "value must be missing after ttl")
 					require.Equal(nil, s_val)
+					wantTimeout = true
 				}
+			}
+			version := s.GetVersions(tt.args[0].Key)[0]
+			if !wantTimeout {
+				require.Equal(expVersion, version)
 			}
 		})
 	}

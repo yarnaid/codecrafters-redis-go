@@ -36,6 +36,8 @@ func (c *GetCommand) Execute() (parser.Serializable, error) {
 	case int:
 		// slog.Debug("[Command][GET]", "int", val)
 		return parser.BulkString(strconv.FormatInt(int64(val), 10)), nil
+	case parser.BulkString:
+		return val, nil
 	default:
 		return nil, fmt.Errorf("unsupported type %T", val)
 	}

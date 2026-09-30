@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"sync"
 
 	"my-redis/app/commands"
 	"my-redis/app/parser"
@@ -18,12 +19,17 @@ type RW interface {
 	io.Writer
 	Close() error
 }
-
+type WatchItem struct {
+	Key     string
+	Version int
+}
 type Handler struct {
 	Conn               RW
 	Coordinator        *storage.Coordinator
 	Queue              []commands.Command
 	TransactionStarted bool
+	WatchList          []WatchItem
+	TxWait             *sync.WaitGroup
 }
 
 func (h *Handler) SetConn(conn RW) {
@@ -44,6 +50,7 @@ func (h *Handler) HandleConnection() {
 		}
 		logger.Debug("[Handler]", "data", string(buf[:n]))
 
+		h.TxWait.Wait()
 		h.process_command(buf[:n])
 
 	}
@@ -75,18 +82,46 @@ func (h *Handler) process_command(buf []byte) {
 	switch c := command.(type) {
 	case *commands.Watch:
 		response, err = c.Execute()
+		if err == nil {
+			for i := range c.Keys {
+				h.WatchList = append(h.WatchList, WatchItem{c.Keys[i], c.Versions[i]})
+				slog.Debug("[handler]start watching", "item", h.WatchList[len(h.WatchList)-1])
+			}
+		} else {
+			slog.Error("[handler] add watch keys error", "err", err, "keys", c.Keys)
+			h.WatchList = h.WatchList[:0]
+		}
 	case *commands.MultiCommand:
 		h.TransactionStarted = true
 		slog.Debug("[Handler] transaction started", "tx", h.TransactionStarted)
 		response, err = command.Execute()
+		if err != nil {
+			h.finishTx()
+		}
 	case *commands.DiscardCommand:
 		response, err = command.Execute()
-		h.TransactionStarted = false
-		clear(h.Queue)
-		h.Queue = h.Queue[:0]
+		h.finishTx()
 	case *commands.ExecCommand:
 		slog.Debug("[Handler] transaction exec", "tx", h.TransactionStarted, "cmd.tx", c.InTransaction)
+		h.TxWait.Add(1)
+		defer h.TxWait.Done()
 		h.TransactionStarted = false
+		if len(h.WatchList) > 0 {
+			for _, w := range h.WatchList {
+				slog.Debug("[handler] validating watch keys", "watch", h.WatchList)
+
+				v := h.Coordinator.GetVersions(w.Key)[0]
+				if v != w.Version {
+					h.finishTx()
+					h.send_response(parser.NullArray(0))
+					return
+				}
+			}
+			slog.Debug("[handler] all watch keys are valid")
+
+		} else {
+			slog.Debug("[handler] no watch keys found")
+		}
 		response, err = command.Execute()
 		if err == nil {
 			responses := make(parser.Array[parser.Serializable], len(h.Queue))
@@ -99,10 +134,8 @@ func (h *Handler) process_command(buf []byte) {
 				}
 			}
 			response = responses
-			clear(h.Queue)
-			h.Queue = h.Queue[:0]
 		}
-
+		h.finishTx()
 	default:
 		if h.TransactionStarted {
 			h.Queue = append(h.Queue, command)
@@ -158,4 +191,11 @@ func toStringsSlice(input []parser.Serializable) ([]string, error) {
 	}
 	// logger.Debug("Stringify", "input", input, "output", args)
 	return args, nil
+}
+
+func (h *Handler) finishTx() {
+	h.TransactionStarted = false
+	clear(h.Queue)
+	h.Queue = h.Queue[:0]
+	h.WatchList = h.WatchList[:0]
 }

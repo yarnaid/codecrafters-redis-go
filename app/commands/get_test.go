@@ -16,7 +16,7 @@ import (
 func TestGetCommand_Execute(t *testing.T) {
 	type kv struct {
 		Key     string
-		Value   interface{}
+		Value   parser.BulkString
 		TTL     time.Duration
 		Kind    storage.ValueKind
 		wantErr bool
@@ -25,10 +25,10 @@ func TestGetCommand_Execute(t *testing.T) {
 		name  string // description of this test case
 		store []kv
 	}{
-		{"simple", []kv{{"123", 123, 0, storage.KindString, false}}},
-		{"ttl", []kv{{"124", 124, 100 * time.Millisecond, storage.KindString, false}}},
-		{"twice", []kv{{"125", 125, 0, storage.KindString, false}, {"126", 126, 0, storage.KindString, false}}},
-		{"twice diff", []kv{{"127", 127, 0, storage.KindString, false}, {"str", "str", 0, storage.KindString, false}}},
+		{"simple", []kv{{"123", "123", 0, storage.KindString, false}}},
+		{"ttl", []kv{{"124", "124", 100 * time.Millisecond, storage.KindString, false}}},
+		{"twice", []kv{{"125", "125", 0, storage.KindString, false}, {"126", "126", 0, storage.KindString, false}}},
+		{"twice diff", []kv{{"127", "127", 0, storage.KindString, false}, {"str", "str", 0, storage.KindString, false}}},
 	}
 	assert := assert.New(t)
 	require := require.New(t)
@@ -45,10 +45,10 @@ func TestGetCommand_Execute(t *testing.T) {
 				got, gotErr := p.Execute()
 				// slog.Debug("GET cmd executed", "got", got, "gotErr", gotErr)
 				if !v.wantErr {
-					assert.Nil(gotErr)
-					vv, ok := v.Value.(parser.BulkString)
-					require.True(ok)
-					require.Equal(parser.BulkString(vv), got)
+					require.NoError(gotErr)
+					// vv, ok := v.Value.(parser.BulkString)
+					// require.True(ok, "incorrect type of value %T", v.Value)
+					require.Equal(parser.BulkString(v.Value), got)
 
 					if v.TTL > 0 {
 						time.Sleep(v.TTL + time.Millisecond)

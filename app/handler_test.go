@@ -2,6 +2,7 @@ package main_test
 
 import (
 	"net"
+	"sync"
 	"testing"
 
 	. "my-redis/app"
@@ -54,6 +55,7 @@ func initClient() net.Conn {
 	handler := Handler{
 		Conn:        server,
 		Coordinator: storage.NewMemoryCoordinator(nil),
+		TxWait:      &sync.WaitGroup{},
 	}
 	go handler.HandleConnection()
 	return client

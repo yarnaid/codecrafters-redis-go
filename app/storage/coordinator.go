@@ -40,7 +40,8 @@ func (s *Coordinator) Set(key string, value interface{}, ttl time.Duration, kind
 }
 
 func (s *Coordinator) setLocked(key string, value interface{}, ttl time.Duration, kind ValueKind) bool {
-	val := Value{Value: value, Kind: kind}
+	version := s.getVersionsLocked(key)[0]
+	val := Value{Value: value, Kind: kind, Version: max(version+1, 1)}
 	if ttl > 0 {
 		val.ExpireAt = time.Now().Add(ttl)
 	}
@@ -121,4 +122,23 @@ func (c *Coordinator) Incr(key string) (parser.Int, error) {
 		return 0, fmt.Errorf("cannot set value=%d for key=%v", val_int, key)
 	}
 	return parser.Int(val_int), nil
+}
+
+func (c *Coordinator) GetVersions(keys ...string) []int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.getVersionsLocked(keys...)
+}
+
+func (c *Coordinator) getVersionsLocked(keys ...string) []int {
+	versions := make([]int, len(keys))
+	for i, k := range keys {
+		v, ok := c.backend.Get(k)
+		if !ok {
+			versions[i] = -1
+		} else {
+			versions[i] = v.Version
+		}
+	}
+	return versions
 }

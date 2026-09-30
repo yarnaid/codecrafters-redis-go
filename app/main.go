@@ -3,6 +3,7 @@ package main
 import (
 	"net"
 	"os"
+	"sync"
 
 	"my-redis/app/storage"
 )
@@ -21,6 +22,7 @@ var cfg = Config{
 func main() {
 	logger.Info("Logs from your program will appear here!")
 	coordinator := storage.NewMemoryCoordinator(nil)
+	globalWait := sync.WaitGroup{}
 
 	l, err := net.Listen("tcp", cfg.address+":"+cfg.port)
 	if err != nil {
@@ -33,7 +35,7 @@ func main() {
 			logger.Error("Error accepting connection", "error", err.Error())
 			os.Exit(1)
 		}
-		handler := Handler{Conn: conn, Coordinator: coordinator}
+		handler := Handler{Conn: conn, Coordinator: coordinator, TxWait: &globalWait}
 		go handler.HandleConnection()
 	}
 }

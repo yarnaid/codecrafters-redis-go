@@ -7,6 +7,7 @@ import (
 type Value struct {
 	ExpireAt time.Time
 	Value    interface{}
+	Version  int
 	Kind     ValueKind
 }
 

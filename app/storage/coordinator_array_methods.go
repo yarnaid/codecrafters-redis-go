@@ -35,6 +35,7 @@ func (s *Coordinator) Append(key string, values ...parser.Serializable) int {
 	}
 	arr = append(arr, values...)
 	val.Value = arr
+	val.Version++
 	s.backend.Set(key, &val)
 	slog.Debug("[Coordinator][Append] len", "len", len(arr), "val", val.Value)
 	return len(arr) + popped
@@ -62,6 +63,7 @@ func (s *Coordinator) Prepend(key string, values ...parser.Serializable) int {
 		return 0
 	}
 	val.Value = PrependReversed(arr, values...)
+	val.Version++
 	s.backend.Set(key, &val)
 	res_arr, _ := val.Value.([]parser.Serializable)
 	// slog.Debug("[Storage][Append] len", "len", len(res_arr), "val", res_arr)
@@ -124,7 +126,8 @@ func (s *Coordinator) LPop(key string, n int) ([]parser.Serializable, error) {
 
 	slog.Debug("[Coordinator][LPop] input", "arr", arr)
 	res, remain := popListLeft(arr, n)
-	s.backend.Set(key, &Value{Value: remain})
+
+	s.backend.Set(key, &Value{Value: remain, Version: val.Version + 1})
 	slog.Debug("[Coordinator][LPop] return", "res", res, "new_arr", remain)
 	return res, nil
 }

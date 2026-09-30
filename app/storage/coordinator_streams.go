@@ -52,6 +52,7 @@ func (c *Coordinator) Xadd(key, id string, kvPairs ...string) (string, error) {
 	}
 
 	v.Value = append(stream, newStreamVal)
+	v.Version++
 	c.backend.Set(key, &v)
 	c.broadcastStreamValue(key, *newStreamVal)
 
