@@ -147,8 +147,14 @@ func FromInput(input []string, coordinator *storage.Coordinator, txStarted bool)
 	case "UNWATCH":
 		return &UnwatchCommand{}, nil
 
+	case "INFO":
+		if strings.ToUpper(input[1]) == "replication" {
+			return &InfoCommand{}, nil
+		}
+		return &UnwatchCommand{}, &InvalidCommandError{input[0], input[1:]}
+
 	default:
-		return nil, errors.New("Unknown command: " + input[0])
+		return nil, &UnknownCommandError{input[0]}
 	}
 }
 

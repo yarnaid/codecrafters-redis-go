@@ -27,7 +27,7 @@ func main() {
 	l, err := net.Listen("tcp", cfg.listenAddr().String())
 	logger.Debug("[server] start listening", "addr", cfg.bind.String(), "port", cfg.port)
 	if err != nil {
-		logger.Error("Failed to bind: %v\ncfg=%c", err, cfg)
+		logger.Error("Failed to bind: %v\ncfg=%c", err.Error(), cfg)
 		os.Exit(1)
 	}
 	for {
