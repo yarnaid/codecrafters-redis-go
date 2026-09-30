@@ -36,7 +36,7 @@ func main() {
 			logger.Error("Error accepting connection", "error", err.Error())
 			os.Exit(1)
 		}
-		handler := Handler{Conn: conn, Coordinator: coordinator, TxWait: &globalWait}
+		handler := Handler{Conn: conn, Coordinator: coordinator, TxWait: &globalWait, Cfg: cfg}
 		go handler.HandleConnection()
 	}
 }
