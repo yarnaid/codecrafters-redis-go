@@ -80,7 +80,7 @@ func (h *Handler) process_command(buf []byte) {
 
 	var response parser.Serializable
 	switch c := command.(type) {
-	case *commands.Watch:
+	case *commands.WatchCommand:
 		response, err = c.Execute()
 		if err == nil {
 			for i := range c.Keys {
@@ -98,6 +98,9 @@ func (h *Handler) process_command(buf []byte) {
 		if err != nil {
 			h.finishTx()
 		}
+	case *commands.UnwatchCommand:
+		response, err = command.Execute()
+		h.WatchList = h.WatchList[:0]
 	case *commands.DiscardCommand:
 		response, err = command.Execute()
 		h.finishTx()

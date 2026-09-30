@@ -7,14 +7,14 @@ import (
 	"my-redis/app/storage"
 )
 
-type Watch struct {
+type WatchCommand struct {
 	Coordinator *storage.Coordinator
 	Keys        []string
 	Versions    []int
 	InTx        bool
 }
 
-func (w *Watch) Execute() (parser.Serializable, error) {
+func (w *WatchCommand) Execute() (parser.Serializable, error) {
 	if w.InTx {
 		return nil, fmt.Errorf("ERR WATCH inside MULTI is not allowed")
 	}
@@ -22,6 +22,6 @@ func (w *Watch) Execute() (parser.Serializable, error) {
 	return parser.SimpleString("OK"), nil
 }
 
-func (w *Watch) Validate() error {
+func (w *WatchCommand) Validate() error {
 	return nil
 }
