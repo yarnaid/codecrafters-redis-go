@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	. "my-redis/app"
+	"my-redis/app/parser"
 	"my-redis/app/storage"
 
 	"github.com/stretchr/testify/assert"
@@ -31,22 +32,74 @@ func TestHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client, server := net.Pipe()
-			handler := Handler{
-				Conn:        server,
-				Coordinator: storage.NewMemoryCoordinator(nil),
-			}
-			go handler.HandleConnection()
+			require := require.New(t)
+			client := initClient()
 
 			_, err := client.Write(tt.input)
-			require.NoError(t, err)
+			require.NoError(err)
 
 			buf := make([]byte, 512)
 			n, err := client.Read(buf)
-			require.NoError(t, err)
+			require.NoError(err)
 
 			response := buf[:n]
 			assert.Equal(t, string(tt.output), string(response))
+		})
+	}
+}
+
+func initClient() net.Conn {
+	client, server := net.Pipe()
+	handler := Handler{
+		Conn:        server,
+		Coordinator: storage.NewMemoryCoordinator(nil),
+	}
+	go handler.HandleConnection()
+	return client
+}
+
+func stringsToCmd(input []string) []byte {
+	a := make(parser.Array[parser.BulkString], len(input))
+	for i := range len(input) {
+		a[i] = parser.BulkString(input[i])
+	}
+	res, _ := a.Serialize()
+	return res
+}
+
+func TestHandlerSeq(t *testing.T) {
+	type cmdAndRes struct {
+		cmd []string
+		res func() []byte
+	}
+	tests := []struct {
+		name     string
+		commands []cmdAndRes
+	}{
+		{"echo", []cmdAndRes{{cmd: []string{"ECHO", "123"}, res: func() []byte { return []byte("$3\r\n123\r\n") }}}},
+		{"empty tx", []cmdAndRes{
+			{cmd: []string{"MULTI"}, res: func() []byte { return []byte("+OK\r\n") }},
+			{cmd: []string{"EXEC"}, res: func() []byte { res, _ := parser.Array[parser.Serializable]{}.Serialize(); return res }},
+		}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := initClient()
+			require := require.New(t)
+			for _, cmd := range tt.commands {
+				_, err := client.Write(stringsToCmd(cmd.cmd))
+				require.NoError(err)
+
+				buf := make([]byte, 512)
+				n, err := client.Read(buf)
+				require.NoError(err)
+
+				response := buf[:n]
+				require.NoError(err)
+				require.Equal(string(cmd.res()), string(response))
+
+			}
 		})
 	}
 }

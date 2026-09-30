@@ -12,7 +12,7 @@ import (
 	"my-redis/app/storage"
 )
 
-func FromInput(input []string, coordinator *storage.Coordinator) (Command, error) {
+func FromInput(input []string, coordinator *storage.Coordinator, txStarted bool) (Command, error) {
 	if len(input) == 0 {
 		return nil, errors.New("Empty command")
 	}
@@ -133,7 +133,7 @@ func FromInput(input []string, coordinator *storage.Coordinator) (Command, error
 		return &MultiCommand{}, nil
 
 	case "EXEC":
-		return &ExecCommand{InTransaction: false}, nil
+		return &ExecCommand{InTransaction: txStarted}, nil
 
 	case "INCR":
 		return &IncrCommand{Coord: coordinator, Key: input[1]}, nil

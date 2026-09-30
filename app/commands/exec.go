@@ -10,7 +10,7 @@ type ExecCommand struct {
 
 func (e ExecCommand) Execute() (parser.Serializable, error) {
 	if e.InTransaction {
-		panic("exec command is not implemented yet")
+		return parser.Array[parser.Serializable]{}, nil
 	}
 	return parser.SimpleError("ERR EXEC without MULTI"), nil
 }

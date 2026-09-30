@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 
 	"my-redis/app/commands"
 	"my-redis/app/parser"
@@ -19,9 +20,10 @@ type RW interface {
 }
 
 type Handler struct {
-	Conn        RW
-	Coordinator *storage.Coordinator
-	Queue       []*commands.Command
+	Conn               RW
+	Coordinator        *storage.Coordinator
+	Queue              []*commands.Command
+	TransactionStarted bool
 }
 
 func (h *Handler) SetConn(conn RW) {
@@ -62,11 +64,20 @@ func (h *Handler) process_command(buf []byte) {
 		h.send_error_response(msg, err)
 		return
 	}
-	command, err := commands.FromInput(command_arr, h.Coordinator)
+	command, err := commands.FromInput(command_arr, h.Coordinator, h.TransactionStarted)
 	if err != nil {
 		logger.Error("Error parsing command", "error", err.Error())
 		h.send_error_response("Error parsing command", err)
 		return
+	}
+
+	switch command.(type) {
+	case *commands.MultiCommand:
+		h.TransactionStarted = true
+		slog.Debug("[Handler] transaction started")
+	case *commands.ExecCommand:
+		slog.Debug("[Handler] transaction exec")
+		h.TransactionStarted = false
 	}
 
 	response, err := command.Execute()
