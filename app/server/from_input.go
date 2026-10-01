@@ -154,7 +154,11 @@ func (h *Handler) FromInput(input []string) (Command, error) {
 		return &UnwatchCommand{}, &InvalidCommandError{input[0], input[1:]}
 
 	case "REPLCONF":
-		return &ReplconfCommand{Subcmd: input[1]}, nil
+		return &ReplconfCommand{Subcmd: input[1], State: h.serverState}, nil
+
+	case "PSYNC":
+		return &PSyncCommand{ReplId: h.serverState.id}, nil
+
 	case "COMMAND":
 		return &InfoCommand{}, nil
 
