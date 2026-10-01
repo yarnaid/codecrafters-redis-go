@@ -3,8 +3,8 @@ package server
 import (
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
+	"net"
 	"sync"
 
 	"my-redis/app/commands"
@@ -14,17 +14,12 @@ import (
 
 const BUFFER_SIZE = 512
 
-type RW interface {
-	io.Reader
-	io.Writer
-	Close() error
-}
 type WatchItem struct {
 	Key     string
 	Version int
 }
 type Handler struct {
-	Conn               RW
+	Conn               net.Conn
 	Coordinator        *storage.Coordinator
 	Queue              []commands.Command
 	TransactionStarted bool
@@ -32,9 +27,10 @@ type Handler struct {
 	TxWait             *sync.WaitGroup
 	Cfg                *config
 	serverState        *ServerState
+	SyncRequired       bool
 }
 
-func (h *Handler) SetConn(conn RW) {
+func (h *Handler) SetConn(conn net.Conn) {
 	h.Conn = conn
 }
 
@@ -54,6 +50,10 @@ func (h *Handler) HandleConnection() {
 
 		h.TxWait.Wait()
 		h.processCommand(buf[:n])
+		if h.SyncRequired {
+			sendEmptyDB(h.Conn)
+			h.SyncRequired = false
+		}
 
 	}
 }
@@ -143,6 +143,9 @@ func (h *Handler) processCommand(buf []byte) {
 			response = responses
 		}
 		h.finishTx()
+	case *PSyncCommand:
+		response, err = c.Execute()
+		h.SyncRequired = true
 	default:
 		if h.TransactionStarted {
 			h.Queue = append(h.Queue, command)
