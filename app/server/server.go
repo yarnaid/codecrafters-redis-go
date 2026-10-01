@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"context"
@@ -17,15 +17,15 @@ type server struct {
 	cfg        config
 	wg         *sync.WaitGroup
 	coord      *storage.Coordinator
-	state      *serverState
+	state      *ServerState
 	masterConn net.Conn
 }
 
-func newServer() (*server, error) {
+func NewServer() (*server, error) {
 	coordinator := storage.NewMemoryCoordinator(nil)
 	globalWait := sync.WaitGroup{}
 	cfg, err := parseConfig(os.Args[1:])
-	state := serverState{id: newServerId()}
+	state := ServerState{id: newServerId()}
 	if cfg.replicaof != "" {
 		state.role = slaveRole
 	} else {
@@ -42,13 +42,15 @@ func newServer() (*server, error) {
 	}, nil
 }
 
-func (s *server) serve() {
+func (s *server) Serve() {
 	l, err := net.Listen("tcp", s.cfg.listenAddr().String())
 	if err != nil {
 		logger.Error("Failed to bind: %v\ncfg=%c", err.Error(), s.cfg)
 		os.Exit(1)
 	}
-	s.connectToMaster()
+	if err := s.connectToMaster(); err != nil {
+		logger.Error("Error connecting to master", "err", err.Error())
+	}
 	logger.Debug("[server] start listening", "addr", s.cfg.bind.String(), "port", s.cfg.port, "replica", s.cfg.replicaof)
 	logger.Debug("[server]", "state", s.state.info())
 	for {
@@ -80,8 +82,27 @@ func (s *server) connectToMaster() error {
 	}
 	s.masterConn = conn
 
-	ping := parser.CommandFromStrings("PING")
-	bytes, _ := ping.Serialize()
-	_, err = s.masterConn.Write(bytes)
+	if _, err := s.sendToMaster("PING"); err != nil {
+		return err
+	}
+	if _, err := s.sendToMaster("REPLCONF", "listening-port", fmt.Sprint(s.cfg.port)); err != nil {
+		return err
+	}
+	if _, err := s.sendToMaster("REPLCONF", "capa", "psync2"); err != nil {
+		return err
+	}
+
 	return err
+}
+
+func (s *server) sendToMaster(cmd ...string) ([]byte, error) {
+	cmdArr := parser.CommandFromStrings(cmd...)
+	bytes, _ := cmdArr.Serialize()
+	_, err := s.masterConn.Write(bytes)
+	if err != nil {
+		return nil, err
+	}
+	var buf [512]byte
+	n, err := s.masterConn.Read(buf[:])
+	return buf[:n], nil
 }

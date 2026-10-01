@@ -1,12 +1,12 @@
-package main_test
+package server_test
 
 import (
 	"net"
 	"sync"
 	"testing"
 
-	. "my-redis/app"
 	"my-redis/app/parser"
+	"my-redis/app/server"
 	"my-redis/app/storage"
 
 	"github.com/stretchr/testify/assert"
@@ -51,9 +51,9 @@ func TestHandler(t *testing.T) {
 }
 
 func initClient() net.Conn {
-	client, server := net.Pipe()
-	handler := Handler{
-		Conn:        server,
+	client, srv := net.Pipe()
+	handler := server.Handler{
+		Conn:        srv,
 		Coordinator: storage.NewMemoryCoordinator(nil),
 		TxWait:      &sync.WaitGroup{},
 	}

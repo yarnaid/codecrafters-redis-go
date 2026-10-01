@@ -1,8 +1,11 @@
 package main
 
 import (
+	"log/slog"
 	"net"
 	"os"
+
+	"my-redis/app/server"
 )
 
 // Ensures gofmt doesn't remove the "net" and "os" imports in stage 1 (feel free to remove this!)
@@ -12,11 +15,11 @@ var (
 )
 
 func main() {
-	logger.Info("Starting redis")
-	server, err := newServer()
+	slog.Info("Starting redis")
+	server, err := server.NewServer()
 	if err != nil {
-		logger.Error("cannot start server", "err", err.Error())
+		slog.Error("cannot start server", "err", err.Error())
 		return
 	}
-	server.serve()
+	server.Serve()
 }

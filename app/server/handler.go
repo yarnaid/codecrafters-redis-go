@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"errors"
@@ -31,7 +31,7 @@ type Handler struct {
 	WatchList          []WatchItem
 	TxWait             *sync.WaitGroup
 	Cfg                *config
-	serverState        *serverState
+	serverState        *ServerState
 }
 
 func (h *Handler) SetConn(conn RW) {
@@ -53,30 +53,30 @@ func (h *Handler) HandleConnection() {
 		logger.Debug("[Handler]", "data", string(buf[:n]))
 
 		h.TxWait.Wait()
-		h.process_command(buf[:n])
+		h.processCommand(buf[:n])
 
 	}
 }
 
-func (h *Handler) process_command(buf []byte) {
-	input_data, err := parser.Deserialize(buf)
+func (h *Handler) processCommand(buf []byte) {
+	inputData, err := parser.Deserialize(buf)
 	if err != nil {
 		logger.Error("Error parsing input data", "error", err.Error())
-		h.send_error_response("Error parsing input data", err)
+		h.sendErrorResponse("Error parsing input data", err)
 		return
 	}
 
-	command_arr, err := toStringsSlice(input_data.([]parser.Serializable))
+	commandArr, err := toStringsSlice(inputData.([]parser.Serializable))
 	if err != nil {
 		msg := "Cannot convert input to strings array"
-		logger.Error(msg, "data", input_data, "type", fmt.Sprintf("%#v\n", input_data))
-		h.send_error_response(msg, err)
+		logger.Error(msg, "data", inputData, "type", fmt.Sprintf("%#v\n", inputData))
+		h.sendErrorResponse(msg, err)
 		return
 	}
-	command, err := commands.FromInput(command_arr, h.Coordinator, h.TransactionStarted)
+	command, err := h.FromInput(commandArr)
 	if err != nil {
 		logger.Error("Error parsing command", "error", err.Error())
-		h.send_error_response("Error parsing command", err)
+		h.sendErrorResponse("Error parsing command", err)
 		return
 	}
 
@@ -120,7 +120,7 @@ func (h *Handler) process_command(buf []byte) {
 				v := h.Coordinator.GetVersions(w.Key)[0]
 				if v != w.Version {
 					h.finishTx()
-					h.send_response(parser.NullArray(0))
+					h.sendResponse(parser.NullArray(0))
 					return
 				}
 			}
@@ -143,6 +143,9 @@ func (h *Handler) process_command(buf []byte) {
 			response = responses
 		}
 		h.finishTx()
+	case *ReplconfCommand:
+		c.State = h.serverState
+		response, err = c.Execute()
 	default:
 		if h.TransactionStarted {
 			h.Queue = append(h.Queue, command)
@@ -154,26 +157,26 @@ func (h *Handler) process_command(buf []byte) {
 
 	if err != nil {
 		logger.Error("Error executing command", "error", err.Error())
-		h.send_response(parser.SimpleError(err.Error()))
+		h.sendResponse(parser.SimpleError(err.Error()))
 		return
 	}
-	h.send_response(response)
+	h.sendResponse(response)
 }
 
-func (h *Handler) send_error_response(message string, err error) {
+func (h *Handler) sendErrorResponse(message string, err error) {
 	msg := "Error: " + message
 	if err != nil {
 		msg += " - " + err.Error()
 	}
 	logger.Error("Sending error response", "message", message, "error", err.Error())
-	h.send_response(parser.SimpleError(msg))
+	h.sendResponse(parser.SimpleError(msg))
 }
 
-func (h *Handler) send_response(response parser.Serializable) {
+func (h *Handler) sendResponse(response parser.Serializable) {
 	logger.Debug("[handler] sending response", "response", response)
 	data, err := response.Serialize()
 	if err != nil {
-		h.send_error_response("Error serializing response", err)
+		h.sendErrorResponse("Error serializing response", err)
 		return
 	}
 

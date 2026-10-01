@@ -1,0 +1,107 @@
+// Project tasks configuration. See https://zed.dev/docs/tasks for documentation.
+//
+// Example:
+[
+  // --- Cursor-scoped -------------------------------------------------------
+    {
+      "label": "go: test (cursor)",
+      "command": "go",
+      "args": ["test", "-count=1", "-race", "-v", "-run", "^${ZED_SYMBOL}$", "."],
+      "cwd": "$ZED_DIRNAME",
+      "save": "all",                 // run against saved code
+      "use_new_terminal": false,
+      "allow_concurrent_runs": true, // rerun cancels the previous run instead of waiting
+      "reveal": "no_focus",          // show output but keep focus in the editor
+      "hide": "never"
+    },
+    {
+      "label": "go: test (cursor, stress x20)",
+      "command": "go",
+      "args": ["test", "-count=20", "-race", "-failfast", "-run", "^${ZED_SYMBOL}$", "."],
+      "cwd": "$ZED_DIRNAME",
+      "save": "all",
+      "allow_concurrent_runs": true,
+      "reveal": "no_focus"
+    },
+    {
+      "label": "go: bench (cursor)",
+      "command": "go",
+      "args": ["test", "-run", "^$", "-bench", "^${ZED_SYMBOL}$", "-benchmem", "."],
+      "cwd": "$ZED_DIRNAME",
+      "save": "all"
+    },
+    {
+      "label": "go: fuzz (cursor, 30s)",
+      "command": "go",
+      "args": ["test", "-run", "^$", "-fuzz", "^${ZED_SYMBOL}$", "-fuzztime=30s", "."],
+      "cwd": "$ZED_DIRNAME",
+      "save": "all"
+    },
+
+    // --- File / package / module --------------------------------------------
+    {
+      // Go has no "test this file"; build a -run regex from the file's Test/Fuzz/Example funcs.
+      "label": "go: test (file)",
+      "command": "go test -count=1 -race -v -run \"^($(grep -oE '^func (Test|Fuzz|Example)[[:alnum:]_]*' \"$ZED_FILE\" | cut -d' ' -f2 | paste -sd '|' -))$\" .",
+      "cwd": "$ZED_DIRNAME",
+      "save": "all",
+      "allow_concurrent_runs": true,
+      "reveal": "no_focus"
+    },
+    {
+      "label": "go: test (package)",
+      "command": "go",
+      "args": ["test", "-count=1", "-race", "."],
+      "cwd": "$ZED_DIRNAME",
+      "save": "all",
+      "allow_concurrent_runs": true,
+      "reveal": "no_focus"
+    },
+    {
+      "label": "go: test (module)",
+      "command": "go",
+      "args": ["test", "-count=1", "-race", "./..."],
+      "cwd": "$ZED_WORKTREE_ROOT",
+      "save": "all",
+      "allow_concurrent_runs": true,
+      "reveal": "no_focus"
+    },
+    {
+      "label": "go: test (module, integration tag)",
+      "command": "go",
+      "args": ["test", "-count=1", "-tags=integration", "./..."],
+      "cwd": "$ZED_WORKTREE_ROOT",
+      "save": "all"
+    },
+    {
+      "label": "go: coverage (module → HTML)",
+      "command": "mkdir -p .cover && go test -count=1 -covermode=atomic -coverprofile=.cover/cover.out ./... && go tool cover -func=.cover/cover.out | tail -n 1 && go tool cover -html=.cover/cover.out",
+      "cwd": "$ZED_WORKTREE_ROOT",
+      "save": "all"
+    },
+    {
+      "label": "gotestsum: module (race)",
+      "command": "gotestsum",
+      "args": ["--format", "testname", "--", "-count=1", "-race", "./..."],
+      "cwd": "$ZED_WORKTREE_ROOT",
+      "save": "all",
+      "allow_concurrent_runs": true
+    },
+    {
+      "label": "gotestsum: watch",
+      "command": "gotestsum",
+      "args": ["--watch", "--format", "testname", "--", "-count=1", "-race"],
+      "cwd": "$ZED_WORKTREE_ROOT",
+      "use_new_terminal": true
+    },
+
+    // --- Hygiene --------------------------------------------------------------
+    { "label": "go: vet",          "command": "go", "args": ["vet", "./..."],      "cwd": "$ZED_WORKTREE_ROOT", "save": "all" },
+    { "label": "go: mod tidy",     "command": "go", "args": ["mod", "tidy"],       "cwd": "$ZED_DIRNAME" },
+    { "label": "go: generate",     "command": "go", "args": ["generate", "./..."], "cwd": "$ZED_WORKTREE_ROOT", "save": "all" },
+    { "label": "lint: golangci-lint", "command": "golangci-lint", "args": ["run", "./..."], "cwd": "$ZED_WORKTREE_ROOT", "save": "all" },
+    { "label": "lint: golangci-lint fmt", "command": "golangci-lint", "args": ["fmt"], "cwd": "$ZED_WORKTREE_ROOT", "save": "all" },
+
+    // --- CodeCrafters ---------------------------------------------------------
+    { "label": "codecrafters: test", "command": "codecrafters", "args": ["test"], "cwd": "$ZED_WORKTREE_ROOT", "save": "all", "reveal": "always" }
+]
