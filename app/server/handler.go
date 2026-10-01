@@ -146,6 +146,8 @@ func (h *Handler) processCommand(buf []byte) {
 	case *ReplconfCommand:
 		c.State = h.serverState
 		response, err = c.Execute()
+	case *PSyncCommand:
+		response, err = c.Execute()
 	default:
 		if h.TransactionStarted {
 			h.Queue = append(h.Queue, command)

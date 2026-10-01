@@ -91,6 +91,9 @@ func (s *server) connectToMaster() error {
 	if _, err := s.sendToMaster("REPLCONF", "capa", "psync2"); err != nil {
 		return err
 	}
+	if _, err := s.sendToMaster("PSYNC", "?", "-1"); err != nil {
+		return err
+	}
 
 	return err
 }
