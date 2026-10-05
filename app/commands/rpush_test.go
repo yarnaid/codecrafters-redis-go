@@ -1,6 +1,7 @@
 package commands_test
 
 import (
+	"context"
 	"testing"
 
 	"my-redis/app/commands"
@@ -23,8 +24,9 @@ func TestRPushCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := storage.NewMemoryCoordinator(nil)
-			cmd := commands.RPushCommand{s, "test", tt.values}
-			got, gotErr := cmd.Execute()
+			env := &commands.Env{Coordinator: s}
+			cmd := commands.RPushCommand{"test", tt.values}
+			got, gotErr := cmd.Execute(context.Background(), env, nil)
 			require.Nil(gotErr)
 			require.Equal(Int(len(tt.values)), got)
 		})

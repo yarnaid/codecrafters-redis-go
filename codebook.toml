@@ -1,4 +1,12 @@
 words = [
+    "BLPOP",
+    "LRANGE",
+    "PSYNC",
+    "RPUSH",
     "Replconf",
+    "Replicaof",
     "Unwatch",
+    "XREAD",
+    "capa",
+    "replid",
 ]

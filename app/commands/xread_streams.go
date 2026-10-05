@@ -1,6 +1,10 @@
 package commands
 
 import (
+	"context"
+	"errors"
+	"strconv"
+	"strings"
 	"time"
 
 	"my-redis/app/parser"
@@ -8,17 +12,18 @@ import (
 )
 
 type XReadStreamCommand struct {
-	C         *storage.Coordinator
 	KeyAndIds []string
 	Timeout   *time.Duration
 	ln        int
 }
 
-func (l *XReadStreamCommand) Execute() (parser.Serializable, error) {
+var _ Command = (*XReadStreamCommand)(nil)
+
+func (l XReadStreamCommand) Execute(ctx context.Context, env *Env, _ *Session) (parser.Serializable, error) {
 	l.ln = int(len(l.KeyAndIds) / 2)
 	res := make(parser.Array[parser.Serializable], l.ln)
 	for i := range l.ln {
-		r, err := l.processKey(i)
+		r, err := l.processKey(i, env)
 		if err != nil {
 			switch err.(type) {
 			case *storage.TimeoutError:
@@ -36,10 +41,10 @@ func (l *XReadStreamCommand) Execute() (parser.Serializable, error) {
 	return res, nil
 }
 
-func (l *XReadStreamCommand) processKey(i int) (parser.Serializable, error) {
+func (l XReadStreamCommand) processKey(i int, env *Env) (parser.Serializable, error) {
 	k := l.KeyAndIds[i]
 	id := l.KeyAndIds[l.ln+i]
-	slice, err := l.C.XReadStreams(k, id, l.Timeout)
+	slice, err := env.Coordinator.XReadStreams(k, id, l.Timeout)
 	if err != nil {
 		return nil, err
 	}
@@ -51,6 +56,24 @@ func (l *XReadStreamCommand) processKey(i int) (parser.Serializable, error) {
 	return resItem, nil
 }
 
-func (l *XReadStreamCommand) Validate() error {
-	return nil
+func parseXRead(args []string) (Command, error) {
+	cmd := XReadStreamCommand{}
+	for len(args) > 0 {
+		switch strings.ToUpper(args[0]) {
+		case "BLOCK":
+			duration, err := strconv.Atoi(args[1])
+			if err != nil {
+				return nil, err
+			}
+			timeout := time.Duration(duration) * time.Millisecond
+			cmd.Timeout = &timeout
+			args = args[2:]
+		case "STREAMS":
+			cmd.KeyAndIds = args[1:]
+			args = args[len(args):]
+		default:
+			return nil, errors.New("Unknown XREAD subcommand: " + args[1])
+		}
+	}
+	return cmd, nil
 }

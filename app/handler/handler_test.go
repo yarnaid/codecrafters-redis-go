@@ -1,12 +1,16 @@
-package server_test
+package handler_test
 
 import (
+	"context"
 	"net"
 	"sync"
 	"testing"
 
+	"my-redis/app/commands"
+	"my-redis/app/config"
+	"my-redis/app/handler"
 	"my-redis/app/parser"
-	"my-redis/app/server"
+	"my-redis/app/replication"
 	"my-redis/app/storage"
 
 	"github.com/stretchr/testify/assert"
@@ -35,7 +39,7 @@ func TestHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			client := initClient()
+			client := initClient(t)
 
 			_, err := client.Write(tt.input)
 			require.NoError(err)
@@ -50,14 +54,17 @@ func TestHandler(t *testing.T) {
 	}
 }
 
-func initClient() net.Conn {
+func initClient(t *testing.T) net.Conn {
+	t.Helper()
 	client, srv := net.Pipe()
-	handler := server.Handler{
-		Conn:        srv,
-		Coordinator: storage.NewMemoryCoordinator(nil),
-		TxWait:      &sync.WaitGroup{},
-	}
-	go handler.HandleConnection()
+	env := commands.NewEnv(
+		storage.NewMemoryCoordinator(nil),
+		replication.New(replication.MasterRole, true),
+		&config.Config{},
+		&sync.WaitGroup{},
+	)
+	h := handler.New(env, false)
+	go h.HandleConnection(context.Background(), srv)
 	return client
 }
 
@@ -110,7 +117,7 @@ func TestHandlerSeq(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := initClient()
+			client := initClient(t)
 			require := require.New(t)
 			for _, cmd := range tt.commands {
 				_, err := client.Write(stringsToCmd(cmd.cmd))

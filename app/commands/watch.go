@@ -1,27 +1,25 @@
 package commands
 
 import (
-	"fmt"
+	"context"
 
 	"my-redis/app/parser"
-	"my-redis/app/storage"
 )
 
 type WatchCommand struct {
-	Coordinator *storage.Coordinator
-	Keys        []string
-	Versions    []int
-	InTx        bool
+	Keys []string
 }
 
-func (w *WatchCommand) Execute() (parser.Serializable, error) {
-	if w.InTx {
-		return nil, fmt.Errorf("ERR WATCH inside MULTI is not allowed")
+var _ Command = (*WatchCommand)(nil)
+
+func (w WatchCommand) Execute(ctx context.Context, env *Env, sess *Session) (parser.Serializable, error) {
+	versions := env.Coordinator.GetVersions(w.Keys...)
+	for i := range versions {
+		sess.WatchList = append(sess.WatchList, WatchItem{w.Keys[i], versions[i]})
 	}
-	w.Versions = w.Coordinator.GetVersions(w.Keys...)
 	return parser.SimpleString("OK"), nil
 }
 
-func (w *WatchCommand) Validate() error {
-	return nil
+func parseWatch(args []string) (Command, error) {
+	return WatchCommand{Keys: args[0:]}, nil
 }

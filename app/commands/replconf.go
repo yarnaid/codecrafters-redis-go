@@ -1,20 +1,19 @@
-package server
+package commands
 
 import (
+	"context"
 	"strings"
 
-	"my-redis/app/commands"
 	"my-redis/app/parser"
 )
 
 type ReplconfCommand struct {
-	State  *ServerState
 	Subcmd string
 }
 
-var _ commands.Command = (*ReplconfCommand)(nil)
+var _ Command = (*ReplconfCommand)(nil)
 
-func (r *ReplconfCommand) Execute() (parser.Serializable, error) {
+func (r ReplconfCommand) Execute(ctx context.Context, env *Env, sess *Session) (parser.Serializable, error) {
 	c := strings.ToLower(r.Subcmd)
 	switch c {
 	case "listening-port":
@@ -23,7 +22,7 @@ func (r *ReplconfCommand) Execute() (parser.Serializable, error) {
 	return parser.SimpleString("OK"), nil
 }
 
-func (r *ReplconfCommand) formatResponse(data []string) parser.Serializable {
+func (r ReplconfCommand) formatResponse(data []string) parser.Serializable {
 	res := make(parser.Array[parser.Serializable], len(data)+1)
 	res[0] = parser.BulkString("REPLCONF")
 	for i, v := range data {
@@ -32,6 +31,6 @@ func (r *ReplconfCommand) formatResponse(data []string) parser.Serializable {
 	return res
 }
 
-func (r *ReplconfCommand) Validate() error {
-	return nil
+func parseReplconf(args []string) (Command, error) {
+	return ReplconfCommand{Subcmd: args[0]}, nil
 }

@@ -1,25 +1,29 @@
 package main
 
 import (
+	"context"
 	"log/slog"
-	"net"
 	"os"
+	"os/signal"
+	"syscall"
 
+	"my-redis/app/config"
 	"my-redis/app/server"
-)
-
-// Ensures gofmt doesn't remove the "net" and "os" imports in stage 1 (feel free to remove this!)
-var (
-	_ = net.Listen
-	_ = os.Exit
 )
 
 func main() {
 	slog.Info("Starting redis")
-	server, err := server.NewServer()
+	cfg, err := config.ParseConfig(os.Args[1:])
+	if err != nil {
+		slog.Error("cannot parse config", "err", err.Error())
+	}
+	server, err := server.NewServer(cfg)
 	if err != nil {
 		slog.Error("cannot start server", "err", err.Error())
 		return
 	}
-	server.Serve()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	server.Serve(ctx)
 }

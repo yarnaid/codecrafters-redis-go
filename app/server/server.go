@@ -2,110 +2,114 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
+	"net/netip"
 	"os"
-	"sync"
 	"time"
 
+	"my-redis/app/commands"
+	"my-redis/app/config"
+	"my-redis/app/handler"
 	"my-redis/app/parser"
-	"my-redis/app/storage"
+	"my-redis/app/replication"
 )
 
 type server struct {
-	cfg        config
-	wg         *sync.WaitGroup
-	coord      *storage.Coordinator
-	state      *ServerState
-	masterConn net.Conn
+	bind netip.Addr
+	port config.Port
+	env  *commands.Env
 }
 
-func NewServer() (*server, error) {
-	coordinator := storage.NewMemoryCoordinator(nil)
-	globalWait := sync.WaitGroup{}
-	cfg, err := parseConfig(os.Args[1:])
-	state := ServerState{id: newServerId()}
-	if cfg.replicaof != "" {
-		state.role = slaveRole
-	} else {
-		state.role = masterRole
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &server{
-		cfg:   cfg,
-		wg:    &globalWait,
-		coord: coordinator,
-		state: &state,
-	}, nil
+func (s *server) listenAddr() netip.AddrPort {
+	return netip.AddrPortFrom(s.bind, uint16(s.port))
 }
 
-func (s *server) Serve() {
-	l, err := net.Listen("tcp", s.cfg.listenAddr().String())
+func (s *server) Serve(ctx context.Context) {
+	l, err := net.Listen("tcp", s.listenAddr().String())
 	if err != nil {
-		logger.Error("Failed to bind: %v\ncfg=%c", err.Error(), s.cfg)
+		logger.Error("Failed to bind", "err", err.Error(), "addr", s.bind, "port", s.port)
 		os.Exit(1)
 	}
-	if err := s.connectToMaster(); err != nil {
+	if err := s.listenMaster(ctx); err != nil {
 		logger.Error("Error connecting to master", "err", err.Error())
 	}
-	logger.Debug("[server] start listening", "addr", s.cfg.bind.String(), "port", s.cfg.port, "replica", s.cfg.replicaof)
-	logger.Debug("[server]", "state", s.state.info())
+	logger.Debug("[server] start listening", "addr", s.bind.String(), "port", s.port, "replica", s.env.Repl.Role() != replication.ReplicaRole, "id", s.env.Repl.ReplID())
+	defer context.AfterFunc(ctx, func() { l.Close() })()
+
 	for {
 		conn, err := l.Accept()
 		if err != nil {
-			logger.Error("Error accepting connection", "error", err.Error())
+			if errors.Is(err, net.ErrClosed) {
+				logger.Info("Connection closed")
+				os.Exit(0)
+			}
+			logger.Error("[server][serve] Error accepting connection", "error", err.Error())
 			os.Exit(1)
 		}
-		handler := Handler{Conn: conn, Coordinator: s.coord, TxWait: s.wg, Cfg: &s.cfg, serverState: s.state}
-		go handler.HandleConnection()
+
+		h := handler.New(s.env, false)
+		go h.HandleConnection(ctx, conn)
 	}
 }
 
-func (s *server) connectToMaster() error {
-	if s.cfg.master == nil {
-		if s.state.role == slaveRole {
-			return fmt.Errorf("cannot start slave without master address")
-		}
+func (s *server) listenMaster(ctx context.Context) error {
+	if s.env.Repl.Role() == replication.MasterRole {
 		return nil
 	}
-	slog.Debug("[connectToMaster] start connecting")
-	ctx, cancel := context.WithTimeoutCause(context.Background(), 5*time.Second, fmt.Errorf("master connection timeout"))
+	slog.Debug("[server][listenMaster] start connecting")
+	ctx, cancel := context.WithTimeoutCause(ctx, 5*time.Second, fmt.Errorf("master connection timeout"))
 	defer cancel()
 
+	masterAddr, err := s.env.MasterAddr()
+	if err != nil {
+		return fmt.Errorf("cannot parse master address: %w", err)
+	}
 	var d net.Dialer
-	conn, err := d.DialContext(ctx, "tcp", s.cfg.master.listenAddr().String())
+	conn, err := d.DialContext(ctx, "tcp", masterAddr)
 	if err != nil {
 		return fmt.Errorf("dial master: %w", err)
 	}
-	s.masterConn = conn
 
-	if _, err := s.sendToMaster("PING"); err != nil {
-		return err
-	}
-	if _, err := s.sendToMaster("REPLCONF", "listening-port", fmt.Sprint(s.cfg.port)); err != nil {
-		return err
-	}
-	if _, err := s.sendToMaster("REPLCONF", "capa", "psync2"); err != nil {
-		return err
-	}
-	if _, err := s.sendToMaster("PSYNC", "?", "-1"); err != nil {
+	err = s.initMasterConn(conn)
+	if err != nil {
 		return err
 	}
 
-	return err
+	slog.Debug("[listenMaster] start replication from master")
+
+	h := handler.New(s.env, true)
+	go h.HandleConnection(ctx, conn)
+
+	return nil
 }
 
-func (s *server) sendToMaster(cmd ...string) ([]byte, error) {
+func (s *server) initMasterConn(conn net.Conn) error {
+	if _, err := sendToMaster(conn, "PING"); err != nil {
+		return err
+	}
+	if _, err := sendToMaster(conn, "REPLCONF", "listening-port", fmt.Sprint(s.port)); err != nil {
+		return err
+	}
+	if _, err := sendToMaster(conn, "REPLCONF", "capa", "psync2"); err != nil {
+		return err
+	}
+	if _, err := sendToMaster(conn, "PSYNC", "?", "-1"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func sendToMaster(conn net.Conn, cmd ...string) ([]byte, error) {
 	cmdArr := parser.CommandFromStrings(cmd...)
 	bytes, _ := cmdArr.Serialize()
-	_, err := s.masterConn.Write(bytes)
+	_, err := conn.Write(bytes)
 	if err != nil {
 		return nil, err
 	}
 	var buf [512]byte
-	n, err := s.masterConn.Read(buf[:])
+	n, err := conn.Read(buf[:])
 	return buf[:n], nil
 }

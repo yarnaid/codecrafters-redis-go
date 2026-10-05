@@ -1,17 +1,20 @@
 package commands
 
 import (
+	"context"
+
 	"my-redis/app/parser"
 	"my-redis/app/storage"
 )
 
 type IncrCommand struct {
-	Coord *storage.Coordinator
-	Key   string
+	Key string
 }
 
-func (i *IncrCommand) Execute() (parser.Serializable, error) {
-	v, err := i.Coord.Incr(i.Key)
+var _ Command = (*IncrCommand)(nil)
+
+func (i IncrCommand) Execute(ctx context.Context, env *Env, sess *Session) (parser.Serializable, error) {
+	v, err := env.Coordinator.Incr(i.Key)
 	if err != nil {
 		switch err.(type) {
 		case *storage.WrongTypeError:
@@ -23,6 +26,6 @@ func (i *IncrCommand) Execute() (parser.Serializable, error) {
 	return v, nil
 }
 
-func (i *IncrCommand) Validate() error {
-	return nil
+func parseIncr(args []string) (Command, error) {
+	return IncrCommand{Key: args[0]}, nil
 }

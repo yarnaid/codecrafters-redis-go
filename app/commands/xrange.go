@@ -1,18 +1,20 @@
 package commands
 
 import (
+	"context"
+
 	"my-redis/app/parser"
-	"my-redis/app/storage"
 )
 
 type XRangeCommand struct {
-	C          *storage.Coordinator
 	Key        string
 	Start, End string
 }
 
-func (l *XRangeCommand) Execute() (parser.Serializable, error) {
-	slice, err := l.C.XRange(l.Key, l.Start, l.End)
+var _ Command = (*XRangeCommand)(nil)
+
+func (l XRangeCommand) Execute(ctx context.Context, env *Env, sess *Session) (parser.Serializable, error) {
+	slice, err := env.Coordinator.XRange(l.Key, l.Start, l.End)
 	if err != nil {
 		return nil, err
 	}
@@ -23,6 +25,6 @@ func (l *XRangeCommand) Execute() (parser.Serializable, error) {
 	return res, nil
 }
 
-func (l *XRangeCommand) Validate() error {
-	return nil
+func parseXRange(args []string) (Command, error) {
+	return XRangeCommand{Key: args[0], Start: args[1], End: args[2]}, nil
 }

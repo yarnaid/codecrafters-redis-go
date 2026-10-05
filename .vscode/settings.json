@@ -6,6 +6,7 @@
         "LRANGE",
         "replicaof",
         "RPUSH",
+        "sess",
         "stretchr",
         "Strg",
         "Unwatch",

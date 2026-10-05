@@ -1,19 +1,21 @@
 package commands
 
 import (
+	"context"
+
 	"my-redis/app/parser"
-	"my-redis/app/storage"
 )
 
 type LLen struct {
-	S   *storage.Coordinator
 	Key string
 }
 
-func (l LLen) Execute() (parser.Serializable, error) {
-	return parser.Int(l.S.LLen(l.Key)), nil
+var _ Command = (*LLen)(nil)
+
+func (l LLen) Execute(ctx context.Context, env *Env, _ *Session) (parser.Serializable, error) {
+	return parser.Int(env.Coordinator.LLen(l.Key)), nil
 }
 
-func (l LLen) Validate() error {
-	return nil
+func parseLLen(args []string) (Command, error) {
+	return LLen{args[0]}, nil
 }

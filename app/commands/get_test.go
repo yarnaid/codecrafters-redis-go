@@ -1,6 +1,7 @@
 package commands_test
 
 import (
+	"context"
 	"log/slog"
 	"testing"
 	"time"
@@ -30,30 +31,26 @@ func TestGetCommand_Execute(t *testing.T) {
 		{"twice", []kv{{"125", "125", 0, storage.KindString, false}, {"126", "126", 0, storage.KindString, false}}},
 		{"twice diff", []kv{{"127", "127", 0, storage.KindString, false}, {"str", "str", 0, storage.KindString, false}}},
 	}
-	assert := assert.New(t)
-	require := require.New(t)
 	slog.SetLogLoggerLevel(slog.LevelDebug)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			assert := assert.New(t)
+			require := require.New(t)
 			s := storage.NewMemoryCoordinator(nil)
+			env := &commands.Env{Coordinator: s}
 			for _, v := range tt.store {
-				// slog.Debug("Want set", "key", v.Key, "value", v.Value)
 				require.True(s.Set(v.Key, v.Value, v.TTL, v.Kind))
-				// slog.Debug("Success set", "key", v.Key, "value", v.Value)
 
-				p := commands.GetCommand{s, v.Key}
-				got, gotErr := p.Execute()
-				// slog.Debug("GET cmd executed", "got", got, "gotErr", gotErr)
+				p := commands.GetCommand{v.Key}
+				got, gotErr := p.Execute(context.Background(), env, nil)
 				if !v.wantErr {
 					require.NoError(gotErr)
-					// vv, ok := v.Value.(parser.BulkString)
-					// require.True(ok, "incorrect type of value %T", v.Value)
 					require.Equal(parser.BulkString(v.Value), got)
 
 					if v.TTL > 0 {
 						time.Sleep(v.TTL + time.Millisecond)
-						p := commands.GetCommand{s, v.Key}
-						got, gotErr = p.Execute()
+						p := commands.GetCommand{v.Key}
+						got, gotErr = p.Execute(nil, env, nil)
 						require.Nil(gotErr)
 						require.Equal(parser.BulkNullString(""), got)
 

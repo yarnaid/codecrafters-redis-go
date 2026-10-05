@@ -1,10 +1,12 @@
 package commands_test
 
 import (
+	"context"
 	"log/slog"
 	"testing"
 	"time"
 
+	"my-redis/app/commands"
 	. "my-redis/app/commands"
 	"my-redis/app/parser"
 	"my-redis/app/storage"
@@ -45,10 +47,11 @@ func TestBLPopSimple(t *testing.T) {
 			require := require.New(t)
 			be := tt.backend().(*storage.MemoryBackend)
 			coordinator := storage.NewMemoryCoordinator(be)
+			env := &Env{Coordinator: coordinator}
 
 			res_ch := make(chan result, 1)
 			go func() {
-				cmd_res, err := BLPop{coordinator, key, tt.timeout}.Execute()
+				cmd_res, err := BLPop{key, tt.timeout}.Execute(nil, env, nil)
 				res_ch <- result{cmd_res, err}
 				slog.Debug("[test][blpop] value received", "res", cmd_res, "err", err)
 			}()
@@ -77,6 +80,7 @@ func TestBLPopSimple(t *testing.T) {
 
 func TestBLPop2Clients(t *testing.T) {
 	c := storage.NewMemoryCoordinator(nil)
+	env := &commands.Env{Coordinator: c}
 
 	key := "blpop-key"
 	value := "blpop-hello"
@@ -87,9 +91,9 @@ func TestBLPop2Clients(t *testing.T) {
 	result_ch1 := make(chan result, 1)
 	result_ch2 := make(chan result, 1)
 	client_f := func(ch chan result) {
-		cmd := BLPop{S: c, Key: key, Timeout: 0}
+		cmd := BLPop{Key: key, Timeout: 0}
 		slog.Debug("[testing][blpop-command] command created")
-		res, err := cmd.Execute()
+		res, err := cmd.Execute(context.Background(), env, nil)
 		slog.Debug("[testing][blpop-command] execution finished", "res", res, "err", err)
 		ch <- result{res, err}
 	}
@@ -101,8 +105,8 @@ func TestBLPop2Clients(t *testing.T) {
 
 	t.Run("test2clients", func(t *testing.T) {
 		require := require.New(t)
-		push := &RPushCommand{c, key, []parser.Serializable{parser.BulkString(value)}}
-		res, err := push.Execute()
+		push := &RPushCommand{key, []parser.Serializable{parser.BulkString(value)}}
+		res, err := push.Execute(context.Background(), env, nil)
 		require.Nil(err)
 		require.Equal(parser.Int(1), res)
 

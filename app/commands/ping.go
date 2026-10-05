@@ -1,15 +1,19 @@
 package commands
 
 import (
+	"context"
+
 	"my-redis/app/parser"
 )
 
 type PingCommand struct{}
 
-func (p PingCommand) Execute() (parser.Serializable, error) {
+var _ Command = (*PingCommand)(nil)
+
+func (p PingCommand) Execute(ctx context.Context, _ *Env, _ *Session) (parser.Serializable, error) {
 	return parser.SimpleString("PONG"), nil
 }
 
-func (p PingCommand) Validate() error {
-	return nil
+func parsePing(args []string) (Command, error) {
+	return PingCommand{}, nil
 }

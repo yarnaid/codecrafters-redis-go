@@ -1,15 +1,19 @@
 package commands
 
 import (
+	"context"
+
 	"my-redis/app/parser"
 )
 
 type MultiCommand struct{}
 
-func (e MultiCommand) Execute() (parser.Serializable, error) {
+var _ Command = (*MultiCommand)(nil)
+
+func (e MultiCommand) Execute(ctx context.Context, env *Env, sess *Session) (parser.Serializable, error) {
 	return parser.SimpleString("OK"), nil
 }
 
-func (e MultiCommand) Validate() error {
-	return nil
+func parseMulti(args []string) (Command, error) {
+	return MultiCommand{}, nil
 }

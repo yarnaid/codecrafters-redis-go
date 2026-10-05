@@ -126,3 +126,7 @@ func CommandFromStrings(s ...string) Array[BulkString] {
 	}
 	return res
 }
+
+func ReplyError(msg string) []byte {
+	return []byte("-" + string(msg) + "\r\n")
+}

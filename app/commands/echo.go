@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"errors"
+	"context"
 
 	"my-redis/app/parser"
 )
@@ -10,13 +10,12 @@ type EchoCommand struct {
 	Msg string
 }
 
-func (e EchoCommand) Execute() (parser.Serializable, error) {
+var _ Command = (*EchoCommand)(nil)
+
+func (e EchoCommand) Execute(_ context.Context, env *Env, _ *Session) (parser.Serializable, error) {
 	return parser.BulkString(e.Msg), nil
 }
 
-func (e EchoCommand) Validate() error {
-	if e.Msg == "" {
-		return errors.New("ECHO command requires a message argument")
-	}
-	return nil
+func parseEcho(args []string) (Command, error) {
+	return EchoCommand{Msg: args[0]}, nil
 }

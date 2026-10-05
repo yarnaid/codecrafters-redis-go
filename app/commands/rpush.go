@@ -1,23 +1,24 @@
 package commands
 
 import (
+	"context"
 	"log/slog"
 
 	"my-redis/app/parser"
-	"my-redis/app/storage"
 )
 
 type RPushCommand struct {
-	S      *storage.Coordinator
 	Key    string
 	Values []parser.Serializable
 }
 
-func (r *RPushCommand) Execute() (parser.Serializable, error) {
+var _ Command = (*RPushCommand)(nil)
+
+func (r RPushCommand) Execute(ctx context.Context, env *Env, _ *Session) (parser.Serializable, error) {
 	slog.Debug("[Command][RPUSH]", "key", r.Key, "values", r.Values)
-	return parser.Int(r.S.Append(r.Key, r.Values...)), nil
+	return parser.Int(env.Coordinator.Append(r.Key, r.Values...)), nil
 }
 
-func (r *RPushCommand) Validate() error {
-	return nil
+func parseRPush(args []string) (Command, error) {
+	return RPushCommand{args[0], parser.ToSerializableSlice(args[1:])}, nil
 }

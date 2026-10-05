@@ -1,19 +1,22 @@
 package commands
 
 import (
+	"context"
+
 	"my-redis/app/parser"
 	"my-redis/app/storage"
 )
 
 type XaddCommand struct {
-	Coord  *storage.Coordinator
 	Key    string
 	Id     string
 	Values []string
 }
 
-func (s *XaddCommand) Execute() (parser.Serializable, error) {
-	newKey, err := s.Coord.Xadd(s.Key, s.Id, s.Values...)
+var _ Command = (*XaddCommand)(nil)
+
+func (s XaddCommand) Execute(ctx context.Context, env *Env, _ *Session) (parser.Serializable, error) {
+	newKey, err := env.Coordinator.Xadd(s.Key, s.Id, s.Values...)
 	if err != nil {
 		switch err.(type) {
 		case storage.InvalidStreamIdSeq:
@@ -27,6 +30,6 @@ func (s *XaddCommand) Execute() (parser.Serializable, error) {
 	return parser.BulkString(newKey), nil
 }
 
-func (s *XaddCommand) Validate() error {
-	return nil
+func parseXAdd(args []string) (Command, error) {
+	return XaddCommand{Key: args[0], Id: args[1], Values: args[2:]}, nil
 }

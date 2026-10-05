@@ -1,9 +1,11 @@
 package commands_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"my-redis/app/commands"
 	. "my-redis/app/commands"
 	"my-redis/app/parser"
 	"my-redis/app/storage"
@@ -36,11 +38,12 @@ func TestSetCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := storage.NewMemoryCoordinator(nil)
+			env := &commands.Env{Coordinator: s}
 			expVersion := len(tt.args)
 			var wantTimeout bool
 			for _, ttt := range tt.args {
-				cmd := SetCommand{s, ttt.Key, ttt.Value, ttt.TTL}
-				res, err := cmd.Execute()
+				cmd := SetCommand{ttt.Key, ttt.Value, ttt.TTL}
+				res, err := cmd.Execute(context.Background(), env, nil)
 				assert.Equal(ttt.ResVal, res)
 				assert.Nil(err)
 				s_val, ok := s.Get(ttt.Key)

@@ -15,7 +15,7 @@ func Deserialize(data []byte) (interface{}, error) {
 	}
 
 	s := string(data)
-	res, rest, err := deserialize_string(s)
+	res, rest, err := deserializeString(s)
 	if err != nil {
 		return nil, err
 	}
@@ -26,10 +26,10 @@ func Deserialize(data []byte) (interface{}, error) {
 	return res, nil
 }
 
-func deserialize_string(s string) (interface{}, string, error) {
+func deserializeString(s string) (interface{}, string, error) {
 	switch s[0] {
 	case '*': // array
-		n, s, err := parse_number(s[1:])
+		n, s, err := parseNumber(s[1:])
 		if err != nil {
 			return nil, s, err
 		}
@@ -38,7 +38,7 @@ func deserialize_string(s string) (interface{}, string, error) {
 		}
 		array := make([]Serializable, n)
 		for i := 0; i < n; i++ {
-			element, remaining, err := deserialize_string(s)
+			element, remaining, err := deserializeString(s)
 			if err != nil {
 				return nil, remaining, err
 			}
@@ -63,7 +63,7 @@ func deserialize_string(s string) (interface{}, string, error) {
 		}
 		return Int(val_int), s, nil
 	case '$': // bulk string
-		n, s, err := parse_number(s[1:])
+		n, s, err := parseNumber(s[1:])
 		if err != nil {
 			return nil, s, err
 		}
@@ -81,7 +81,7 @@ func deserialize_string(s string) (interface{}, string, error) {
 	}
 }
 
-func parse_number(input string) (int, string, error) {
+func parseNumber(input string) (int, string, error) {
 	num, left, exec := strings.Cut(input, "\r\n")
 	if !exec {
 		return 0, "", errors.New("Invalid number format")

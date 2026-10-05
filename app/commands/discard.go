@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"fmt"
+	"context"
 
 	"my-redis/app/parser"
 )
@@ -10,13 +10,12 @@ type DiscardCommand struct {
 	TxStarted bool
 }
 
-func (e DiscardCommand) Execute() (parser.Serializable, error) {
-	if e.TxStarted {
-		return parser.SimpleString("OK"), nil
-	}
-	return nil, fmt.Errorf("ERR DISCARD without MULTI")
+var _ Command = (*DiscardCommand)(nil)
+
+func (e DiscardCommand) Execute(_ context.Context, _ *Env, sess *Session) (parser.Serializable, error) {
+	return parser.SimpleString("OK"), nil
 }
 
-func (e DiscardCommand) Validate() error {
-	return nil
+func parseDiscard(args []string) (Command, error) {
+	return DiscardCommand{}, nil
 }

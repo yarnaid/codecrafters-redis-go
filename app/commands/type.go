@@ -1,17 +1,19 @@
 package commands
 
 import (
+	"context"
+
 	"my-redis/app/parser"
-	"my-redis/app/storage"
 )
 
 type TypeCommand struct {
-	Coord *storage.Coordinator
-	Key   string
+	Key string
 }
 
-func (t *TypeCommand) Execute() (parser.Serializable, error) {
-	k, err := t.Coord.Type(t.Key)
+var _ Command = (*TypeCommand)(nil)
+
+func (t TypeCommand) Execute(ctx context.Context, env *Env, _ *Session) (parser.Serializable, error) {
+	k, err := env.Coordinator.Type(t.Key)
 	if err != nil {
 		return nil, err
 	}
@@ -19,6 +21,6 @@ func (t *TypeCommand) Execute() (parser.Serializable, error) {
 	return parser.SimpleString(s), nil
 }
 
-func (t *TypeCommand) Validate() error {
-	return nil
+func parseType(args []string) (Command, error) {
+	return TypeCommand{Key: args[0]}, nil
 }

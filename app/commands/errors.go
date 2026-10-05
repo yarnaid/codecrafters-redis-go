@@ -2,6 +2,14 @@ package commands
 
 import "fmt"
 
+type NotFoundError struct {
+	Key string
+}
+
+func (e *NotFoundError) Error() string {
+	return fmt.Sprintf("Key %v not found in the storage", e.Key)
+}
+
 type InvalidCommandError struct {
 	Cmd  string
 	Args []string
