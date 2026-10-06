@@ -5,7 +5,7 @@ import (
 )
 
 func New(role Role) *Manager {
-	var id replID
+	var id ReplID
 	if role == MasterRole {
 		id = newReplID()
 	} else {

@@ -19,6 +19,7 @@ type Replica struct {
 	closed chan struct{}
 	once   sync.Once
 	logger *slog.Logger
+	ack    int
 }
 
 func (r *Replica) Close() {
@@ -34,12 +35,12 @@ type Manager struct {
 	mu       sync.Mutex
 	replicas map[*Replica]struct{}
 	offset   int
-	replID   replID
+	replID   ReplID
 	role     Role
 	logger   *slog.Logger
 }
 
-func (m *Manager) ReplID() replID {
+func (m *Manager) ReplID() ReplID {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return m.replID
@@ -71,6 +72,22 @@ func (m *Manager) Register(conn net.Conn, snapshot func() []byte, reader *parser
 	// 	r.conn.Write(data)
 	// }()
 	return r
+}
+
+// AddProcessed advances the replica offset by n bytes of the master stream.
+func (m *Manager) AddProcessed(n int) {
+	m.mu.Lock()
+	m.offset += n
+	m.mu.Unlock()
+}
+
+// AdoptMaster records the master's identity after FULLRESYNC (replica side).
+func (m *Manager) AdoptMaster(replID ReplID, offset int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.role = ReplicaRole
+	m.replID = replID
+	m.offset = offset
 }
 
 func (m *Manager) Offset() int {
@@ -122,9 +139,9 @@ func (m *Manager) readLoop(r *Replica, reader *parser.Reader) {
 			return
 		}
 		if len(args) == 3 && strings.EqualFold(args[0], "REPLCONF") && strings.EqualFold(args[1], "ACK") {
-			if n, err := strconv.ParseInt(args[2], 10, 64); err == nil {
+			if n, err := strconv.Atoi(args[2]); err == nil {
 				r.logger.Debug("received ACK", "ACK", n)
-				// r.ack.Store(n)
+				r.ack = n
 			}
 		}
 	}

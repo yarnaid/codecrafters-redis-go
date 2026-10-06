@@ -5,13 +5,13 @@ import (
 	"strings"
 )
 
-type replID string
+type ReplID string
 
-func newReplID() replID {
+func newReplID() ReplID {
 	l := 40
 	chars := make([]string, l)
 	for i := range l {
 		chars[i] = string(rune('a' + rand.IntN('z'-'a'+1)))
 	}
-	return replID(strings.Join(chars, ""))
+	return ReplID(strings.Join(chars, ""))
 }

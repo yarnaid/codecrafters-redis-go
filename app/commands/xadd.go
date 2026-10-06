@@ -9,14 +9,14 @@ import (
 
 type XaddCommand struct {
 	Key    string
-	Id     string
+	ID     string
 	Values []string
 }
 
 var _ Command = (*XaddCommand)(nil)
 
 func (s XaddCommand) Execute(ctx context.Context, env *Env, _ *Session) (parser.Serializable, error) {
-	newKey, err := env.Coordinator.Xadd(s.Key, s.Id, s.Values...)
+	newKey, err := env.Coordinator.Xadd(s.Key, s.ID, s.Values...)
 	if err != nil {
 		switch err.(type) {
 		case storage.InvalidStreamIdSeq:
@@ -31,5 +31,5 @@ func (s XaddCommand) Execute(ctx context.Context, env *Env, _ *Session) (parser.
 }
 
 func parseXAdd(args []string) (Command, error) {
-	return XaddCommand{Key: args[0], Id: args[1], Values: args[2:]}, nil
+	return XaddCommand{Key: args[0], ID: args[1], Values: args[2:]}, nil
 }

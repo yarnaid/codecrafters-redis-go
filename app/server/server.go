@@ -37,9 +37,11 @@ func (s *server) Serve(ctx context.Context) {
 		logger.Error("Failed to bind", "err", err.Error(), "addr", s.bind, "port", s.port)
 		os.Exit(1)
 	}
-	if err := s.listenMaster(ctx); err != nil {
-		logger.Error("Error connecting to master", "err", err.Error())
-	}
+	go func() {
+		if err := s.listenMaster(ctx); err != nil {
+			logger.Error("Error connecting to master", "err", err.Error())
+		}
+	}()
 	logger.Debug("[server] start listening", "addr", s.bind.String(), "port", s.port, "replica", s.env.Repl.Role() != replication.ReplicaRole, "id", s.env.Repl.ReplID())
 	defer context.AfterFunc(ctx, func() {
 		if err := l.Close(); err != nil {
@@ -68,20 +70,12 @@ func (s *server) listenMaster(ctx context.Context) error {
 		return nil
 	}
 	slog.Debug("[server][listenMaster] start connecting")
-	dailCtx, cancel := context.WithTimeoutCause(ctx, 5*time.Second, fmt.Errorf("master connection timeout"))
-	defer cancel()
-
-	masterAddr, err := s.env.MasterAddr()
+	conn, err := s.dialMaster(ctx)
 	if err != nil {
-		return fmt.Errorf("cannot parse master address: %w", err)
-	}
-	var d net.Dialer
-	conn, err := d.DialContext(dailCtx, "tcp", masterAddr)
-	if err != nil {
-		return fmt.Errorf("dial master: %w", err)
+		return err
 	}
 
-	err = s.handshake(conn)
+	line, err := s.handshake(conn)
 	if err != nil {
 		if err1 := conn.Close(); err1 != nil {
 			logger.Error("cannot init master conn", "err", err, "err2", err1)
@@ -89,54 +83,111 @@ func (s *server) listenMaster(ctx context.Context) error {
 		return err
 	}
 	_ = conn.SetDeadline(time.Time{})
+	err = s.adoptMaster(line)
+	if err != nil {
+		return err
+	}
 
 	slog.Debug("[listenMaster] start replication from master")
 
-	h := handler.New(s.env, true)
-	go h.HandleConnection(ctx, conn)
+	// h := handler.New(s.env, true)
+	// go h.HandleConnection(ctx, conn)
+	//
+	sess := &commands.Session{}
+	r := parser.NewReader(conn)
+	handler := handler.New(s.env, true)
+	for {
+		arr, err := r.ReadArrays()
+		if err != nil {
+			return err
+		}
+		for _, args := range arr {
+			reply := handler.Dispatch(ctx, args, sess)
+			if strings.EqualFold(args[0], "REPLCONF") {
+				if _, err := conn.Write(parser.Encode(reply)); err != nil {
+					return err
+				}
+			}
+			cmd := parser.CommandFromStrings(args...)
+			bytes, _ := cmd.Serialize()
+			s.env.Repl.AddProcessed(len(bytes)) // counted AFTER the command, as Redis does
+		}
+	}
 
 	return nil
 }
 
-func (s *server) handshake(conn net.Conn) error {
+func (s *server) dialMaster(ctx context.Context) (net.Conn, error) {
+	dialCtx, cancel := context.WithTimeoutCause(ctx, 5*time.Second, fmt.Errorf("master connection timeout"))
+	defer cancel()
+
+	masterAddr, err := s.env.MasterAddr()
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse master address: %w", err)
+	}
+	var d net.Dialer
+	conn, err := d.DialContext(dialCtx, "tcp", masterAddr)
+	if err != nil {
+		return nil, fmt.Errorf("dial master: %w", err)
+	}
+	return conn, nil
+}
+
+func (s *server) adoptMaster(line string) error {
+	fields := strings.Fields(line)
+	if len(fields) != 3 || fields[0][1:] != "FULLRESYNC" {
+		return fmt.Errorf("incorrect response from PSYNC: %s", line)
+	}
+	offset, err := strconv.Atoi(fields[2])
+	if err != nil {
+		return err
+	}
+	s.env.Repl.AdoptMaster(replication.ReplID(fields[2]), offset)
+	return nil
+}
+
+func (s *server) handshake(conn net.Conn) (string, error) {
 	br := bufio.NewReader(conn)
-	if err := sendToMaster(conn, br, "PING"); err != nil {
-		return err
+	if _, err := sendToMaster(conn, br, "PING"); err != nil {
+		return "", err
 	}
-	if err := sendToMaster(conn, br, "REPLCONF", "listening-port", fmt.Sprint(s.port)); err != nil {
-		return err
+	if _, err := sendToMaster(conn, br, "REPLCONF", "listening-port", fmt.Sprint(s.port)); err != nil {
+		return "", err
 	}
-	if err := sendToMaster(conn, br, "REPLCONF", "capa", "psync2"); err != nil {
-		return err
+	if _, err := sendToMaster(conn, br, "REPLCONF", "capa", "psync2"); err != nil {
+		return "", err
 	}
-	if err := sendToMaster(conn, br, "PSYNC", "?", "-1"); err != nil {
-		return err
+	var err error
+	var line string
+	if line, err = sendToMaster(conn, br, "PSYNC", "?", "-1"); err != nil {
+		return "", err
 	}
 	hdr, err := br.ReadString('\n')
 	if err != nil || hdr[0] != '$' {
-		return fmt.Errorf("handshake rdb header: %w", err)
+		return "", fmt.Errorf("handshake rdb header: %w", err)
 	}
 	n, err := strconv.ParseInt(strings.TrimSpace(hdr[1:]), 10, 64)
 	if err != nil || n < 0 {
-		return errors.New("handshake: bad rdb length")
+		return "", errors.New("handshake: bad rdb length")
 	}
 	_, err = io.CopyN(io.Discard, br, n)
-	return err
+	s.env.Log.Debug("synced to master")
+	return line, err
 }
 
-func sendToMaster(conn net.Conn, br *bufio.Reader, cmd ...string) error {
+func sendToMaster(conn net.Conn, br *bufio.Reader, cmd ...string) (string, error) {
 	cmdArr := parser.CommandFromStrings(cmd...)
 	bytes, _ := cmdArr.Serialize()
 	_, err := conn.Write(bytes)
 	if err != nil {
-		return err
+		return "", err
 	}
 	line, err := br.ReadString('\n')
 	if err != nil { // exactly one reply line
-		return fmt.Errorf("handshake %s: %w", cmd[0], err)
+		return "", fmt.Errorf("handshake %s: %w", cmd[0], err)
 	}
 	if line[0] == '-' {
-		return fmt.Errorf("handshake %s rejected: %s", cmd[0], strings.TrimSpace(line))
+		return "", fmt.Errorf("handshake %s rejected: %s", cmd[0], strings.TrimSpace(line))
 	}
-	return nil
+	return line, nil
 }

@@ -1,3 +1,4 @@
+// Package handler ...
 package handler
 
 import (
@@ -19,7 +20,7 @@ import (
 	"my-redis/app/replication"
 )
 
-const BUFFER_SIZE = 512
+const BufferSize = 512
 
 type handler struct {
 	fromMaster bool
@@ -65,7 +66,8 @@ func (h *handler) HandleConnection(ctx context.Context, conn net.Conn) {
 			return
 		}
 		for _, args := range arr {
-			res := h.dispatchCommand(ctx, args, sess)
+			res := h.Dispatch(ctx, args, sess)
+			h.AddProcessed(args)
 			if sess.Detached { // check BEFORE writing
 				return
 			}
@@ -80,7 +82,13 @@ func (h *handler) HandleConnection(ctx context.Context, conn net.Conn) {
 	}
 }
 
-func (h *handler) dispatchCommand(ctx context.Context, args []string, sess *commands.Session) parser.Serializable {
+func (h *handler) AddProcessed(args []string) {
+	cmd := parser.CommandFromStrings(args...)
+	bytes, _ := cmd.Serialize()
+	h.env.Repl.AddProcessed(len(bytes))
+}
+
+func (h *handler) Dispatch(ctx context.Context, args []string, sess *commands.Session) parser.Serializable {
 	h.logger.Info("[dispatchCommand]", "args", args)
 	name := strings.ToUpper(args[0])
 	args = args[1:]
