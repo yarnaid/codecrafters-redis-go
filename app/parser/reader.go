@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"strconv"
 )
 
@@ -13,7 +12,7 @@ var EmptyInputError = errors.New("empty input")
 
 const BUFFER_SIZE = 512
 
-type reader struct {
+type Reader struct {
 	conn io.Reader
 	rd   *bufio.Reader
 }
@@ -28,19 +27,19 @@ func (l *loggedReader) Read(p []byte) (n int, err error) {
 	return n, err
 }
 
-func NewReader(conn io.Reader) *reader {
-	return &reader{
+func NewReader(conn io.Reader) *Reader {
+	return &Reader{
 		conn: &loggedReader{conn},
 		rd:   bufio.NewReader(conn),
 	}
 }
 
-func (r *reader) Empty() bool {
-	slog.Debug("reading buff size", "size", r.rd.Buffered())
+func (r *Reader) Empty() bool {
+	// slog.Debug("reading buff size", "size", r.rd.Buffered())
 	return r.rd.Buffered() == 0
 }
 
-func (r *reader) ReadArrays() ([][]string, error) {
+func (r *Reader) ReadArrays() ([][]string, error) {
 	res := make([][]string, 1)
 	first, err := r.ReadArray()
 	if err != nil {
@@ -57,7 +56,7 @@ func (r *reader) ReadArrays() ([][]string, error) {
 	return res, nil
 }
 
-func (r *reader) ReadArray() ([]string, error) {
+func (r *Reader) ReadArray() ([]string, error) {
 	l, err := readHead(r.rd, '*')
 	if err != nil {
 		if l == 0 {

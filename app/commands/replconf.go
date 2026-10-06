@@ -18,6 +18,8 @@ func (r ReplconfCommand) Execute(ctx context.Context, env *Env, sess *Session) (
 	switch c {
 	case "listening-port":
 	case "capa":
+	case "getack":
+		return parser.CommandFromStrings("REPLCONF", "ACK", "0"), nil
 	}
 	return parser.SimpleString("OK"), nil
 }

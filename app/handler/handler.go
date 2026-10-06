@@ -38,7 +38,7 @@ func (h *handler) HandleConnection(ctx context.Context, conn net.Conn) {
 	}
 	sess.Watch = watchDisconnect(conn, br)
 	if sess.Role == replication.MasterRole {
-		sess.Register = func() { h.env.Repl.Register(conn, replication.EmptyDB); sess.Detached = true }
+		sess.Register = func() { h.env.Repl.Register(conn, replication.EmptyDB, r); sess.Detached = true }
 	}
 
 	stop := context.AfterFunc(ctx, func() {

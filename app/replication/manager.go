@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"strconv"
+	"strings"
 	"sync"
 
 	"my-redis/app/parser"
@@ -46,7 +48,7 @@ func (m *Manager) ReplID() replID {
 // Register is called from the PSYNC command after FULLRESYNC is decided.
 // Snapshot and registration happen under the same lock that Propagate uses,
 // so no write is lost between the RDB and the first streamed command.
-func (m *Manager) Register(conn net.Conn, snapshot func() []byte) *Replica {
+func (m *Manager) Register(conn net.Conn, snapshot func() []byte, reader *parser.Reader) *Replica {
 	m.logger.Info("registering new replica", "addr", conn.RemoteAddr())
 	r := &Replica{conn: conn, out: make(chan []byte, replicaQueueSize), closed: make(chan struct{}), logger: m.logger.With("addr", conn.RemoteAddr())}
 
@@ -60,7 +62,14 @@ func (m *Manager) Register(conn net.Conn, snapshot func() []byte) *Replica {
 	m.mu.Unlock()
 
 	go m.writeLoop(r)
-	// go m.readLoop(r)
+	go m.readLoop(r, reader)
+	// go func() {
+	// 	timer := time.After(time.Second * 1)
+	// 	<-timer
+	// 	m.logger.Debug("sending ACK to replicas")
+	// 	data, _ := parser.CommandFromStrings("REPLCONF", "GETACK", "*").Serialize()
+	// 	r.conn.Write(data)
+	// }()
 	return r
 }
 
@@ -99,20 +108,27 @@ func (m *Manager) writeLoop(r *Replica) {
 }
 
 // readLoop consumes REPLCONF ACK <offset> frames from the replica.
-// func (m *Manager) readLoop(r *Replica, br *bufio.Reader) {
-// 	defer m.remove(r)
-// 	for {
-// 		args, _, err := parser.ReadCommand(br)
-// 		if err != nil {
-// 			return
-// 		}
-// 		if len(args) == 3 && strings.EqualFold(args[0], "REPLCONF") && strings.EqualFold(args[1], "ACK") {
-// 			if n, err := strconv.ParseInt(args[2], 10, 64); err == nil {
-// 				r.ack.Store(n)
-// 			}
-// 		}
-// 	}
-// }
+func (m *Manager) readLoop(r *Replica, reader *parser.Reader) {
+	defer m.remove(r)
+	for {
+		arr, err := reader.ReadArrays()
+		if len(arr) == 0 {
+			r.logger.Debug("received empty command from master")
+			continue
+		}
+		args := arr[0]
+		if err != nil {
+			r.logger.Error("cannot read cmds", "err", err)
+			return
+		}
+		if len(args) == 3 && strings.EqualFold(args[0], "REPLCONF") && strings.EqualFold(args[1], "ACK") {
+			if n, err := strconv.ParseInt(args[2], 10, 64); err == nil {
+				r.logger.Debug("received ACK", "ACK", n)
+				// r.ack.Store(n)
+			}
+		}
+	}
+}
 
 func (m *Manager) Propagate(raw []byte) {
 	m.mu.Lock()
