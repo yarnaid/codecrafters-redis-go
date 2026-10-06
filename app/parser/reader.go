@@ -15,6 +15,7 @@ const BUFFER_SIZE = 512
 
 type reader struct {
 	conn io.Reader
+	rd   *bufio.Reader
 }
 
 type loggedReader struct {
@@ -23,20 +24,41 @@ type loggedReader struct {
 
 func (l *loggedReader) Read(p []byte) (n int, err error) {
 	n, err = l.r.Read(p)
-	slog.Debug("[logged reader]", "data", string(p[:n]), "n", n, "err", err)
+	// slog.Debug("[logged reader]", "data", string(p[:n]), "n", n, "err", err)
 	return n, err
 }
 
 func NewReader(conn io.Reader) *reader {
 	return &reader{
 		conn: &loggedReader{conn},
+		rd:   bufio.NewReader(conn),
 	}
 }
 
-func (r *reader) ReadArray() ([]string, error) {
-	rd := bufio.NewReader(r.conn)
+func (r *reader) Empty() bool {
+	slog.Debug("reading buff size", "size", r.rd.Buffered())
+	return r.rd.Buffered() == 0
+}
 
-	l, err := readHead(rd, '*')
+func (r *reader) ReadArrays() ([][]string, error) {
+	res := make([][]string, 1)
+	first, err := r.ReadArray()
+	if err != nil {
+		return nil, err
+	}
+	res[0] = first
+	for !r.Empty() {
+		arr, err := r.ReadArray()
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, arr)
+	}
+	return res, nil
+}
+
+func (r *reader) ReadArray() ([]string, error) {
+	l, err := readHead(r.rd, '*')
 	if err != nil {
 		if l == 0 {
 			return nil, EmptyInputError
@@ -47,7 +69,7 @@ func (r *reader) ReadArray() ([]string, error) {
 	res := make([]string, 0, l)
 
 	for range l {
-		size, err := readHead(rd, '$')
+		size, err := readHead(r.rd, '$')
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse bulk string len: %w", err)
 		}
@@ -56,7 +78,7 @@ func (r *reader) ReadArray() ([]string, error) {
 		}
 
 		buf := make([]byte, size+2)
-		if _, err := io.ReadFull(rd, buf); err != nil {
+		if _, err := io.ReadFull(r.rd, buf); err != nil {
 			return nil, fmt.Errorf("invalid bulk string: %w", err)
 		}
 		if buf[size] != '\r' && buf[size+1] != '\n' {

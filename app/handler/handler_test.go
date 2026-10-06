@@ -59,7 +59,7 @@ func initClient(t *testing.T) net.Conn {
 	client, srv := net.Pipe()
 	env := commands.NewEnv(
 		storage.NewMemoryCoordinator(nil),
-		replication.New(replication.MasterRole, true),
+		replication.New(replication.MasterRole),
 		&config.Config{},
 		&sync.WaitGroup{},
 	)
@@ -135,3 +135,10 @@ func TestHandlerSeq(t *testing.T) {
 		})
 	}
 }
+
+// func TestHandlerMultiCmd(t *testing.T) {
+// 	tests := []struct {
+// 		name string
+// 		cmds [][]string
+// 	}{}
+// }

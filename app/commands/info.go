@@ -22,7 +22,8 @@ func (s InfoCommand) Execute(_ context.Context, env *Env, sess *Session) (parser
 }
 
 func parseInfo(args []string) (Command, error) {
-	if strings.ToLower(args[0]) == "replication" {
+	switch strings.ToLower(args[0]) {
+	case "replication", "server":
 		return InfoCommand{}, nil
 	}
 	return nil, &InvalidCommandError{args[0], args[1:]}

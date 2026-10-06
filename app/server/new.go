@@ -18,7 +18,7 @@ func NewServer(cfg *config.Config) (*server, error) {
 	}
 	coordinator := storage.NewMemoryCoordinator(nil)
 	globalWait := sync.WaitGroup{}
-	repl := replication.New(role, cfg.Debug)
+	repl := replication.New(role)
 	env := commands.NewEnv(coordinator, repl, cfg, &globalWait)
 	return &server{
 		bind: cfg.Bind,

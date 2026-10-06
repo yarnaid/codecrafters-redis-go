@@ -16,12 +16,15 @@ type Replica struct {
 	out    chan []byte
 	closed chan struct{}
 	once   sync.Once
+	logger *slog.Logger
 }
 
 func (r *Replica) Close() {
 	r.once.Do(func() {
 		close(r.closed)
-		_ = r.conn.Close()
+		if err := r.conn.Close(); err != nil {
+			slog.Error("problem with closing replica conn", "err", err, "addr", r.conn.RemoteAddr())
+		}
 	})
 }
 
@@ -45,14 +48,14 @@ func (m *Manager) ReplID() replID {
 // so no write is lost between the RDB and the first streamed command.
 func (m *Manager) Register(conn net.Conn, snapshot func() []byte) *Replica {
 	m.logger.Info("registering new replica", "addr", conn.RemoteAddr())
-	r := &Replica{conn: conn, out: make(chan []byte, replicaQueueSize), closed: make(chan struct{})}
+	r := &Replica{conn: conn, out: make(chan []byte, replicaQueueSize), closed: make(chan struct{}), logger: m.logger.With("addr", conn.RemoteAddr())}
 
 	m.mu.Lock()
-	m.logger.Debug("preparing full resync", "addr", conn.RemoteAddr())
+	// m.logger.Debug("preparing full resync", "addr", conn.RemoteAddr())
 	out, _ := parser.SimpleString(fmt.Sprintf("FULLRESYNC %s 0", m.replID)).Serialize()
 	out = append(out, snapshot()...)
 	r.out <- out // first item in the queue, before any propagated command
-	m.logger.Debug("snapshot sent to replica", "addr", conn.RemoteAddr())
+	// m.logger.Debug("snapshot sent to replica", "addr", conn.RemoteAddr())
 	m.replicas[r] = struct{}{}
 	m.mu.Unlock()
 
@@ -78,18 +81,18 @@ func (m *Manager) remove(r *Replica) {
 }
 
 func (m *Manager) writeLoop(r *Replica) {
-	m.logger.Debug("start replica write loop", "addr", r.conn.RemoteAddr())
+	r.logger.Info("start replica write loop")
 	defer m.remove(r)
 	for {
 		select {
 		case b := <-r.out:
-			m.logger.Debug("writing to replica", "addr", r.conn.RemoteAddr())
+			// m.logger.Debug("writing to replica", "addr", r.conn.RemoteAddr())
 			if _, err := r.conn.Write(b); err != nil {
-				m.logger.Error("cannot write to replica", "addr", r.conn.RemoteAddr(), "err", err)
+				r.logger.Error("cannot write to replica", "err", err)
 				return
 			}
 		case <-r.closed:
-			m.logger.Debug("replica connection closed", "replID", r.conn.RemoteAddr().String())
+			r.logger.Debug("replica connection closed")
 			return
 		}
 	}

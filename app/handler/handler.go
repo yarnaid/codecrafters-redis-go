@@ -28,6 +28,7 @@ type handler struct {
 }
 
 func (h *handler) HandleConnection(ctx context.Context, conn net.Conn) {
+	h.logger = h.logger.With("addr", conn.RemoteAddr())
 	br := bufio.NewReader(conn)
 	r := parser.NewReader(br) // one buffer shared by parser and watcher
 	sess := &commands.Session{
@@ -37,34 +38,44 @@ func (h *handler) HandleConnection(ctx context.Context, conn net.Conn) {
 	}
 	sess.Watch = watchDisconnect(conn, br)
 	if sess.Role == replication.MasterRole {
-		// If you re-enable readLoop for ACKs, it must read from the same br.
-		sess.Register = func() { h.env.Repl.Register(conn, replication.EmptyDB) }
+		sess.Register = func() { h.env.Repl.Register(conn, replication.EmptyDB); sess.Detached = true }
 	}
 
-	stop := context.AfterFunc(ctx, func() { _ = conn.Close() }) // parent ctx, no goroutine
+	stop := context.AfterFunc(ctx, func() {
+		if err := conn.Close(); err != nil {
+			h.logger.Error("error closing connection", "err", err)
+		}
+		h.logger.Debug("closing handler conn after ctx")
+	}) // parent ctx, no goroutine
 	defer stop()
 	defer func() {
 		if !sess.Detached { // a detached conn belongs to replication
-			_ = conn.Close()
+			h.logger.Debug("connection is not detached, closing")
+			if err := conn.Close(); err != nil {
+				h.logger.Error("closing not detached conn", "err", err)
+			}
 		}
 	}()
 
 	for {
-		args, err := r.ReadArray()
+		h.logger.Debug("reading array")
+		arr, err := r.ReadArrays()
 		if err != nil {
 			h.logReadError(err)
 			return
 		}
-		res := h.dispatchCommand(ctx, args, sess)
-		if res == nil {
-			continue
-		}
-		if sess.Detached { // check BEFORE writing
-			return
-		}
-		if _, err := conn.Write(parser.Encode(res)); err != nil {
-			h.logger.Debug("write failed", "addr", conn.RemoteAddr(), "err", err)
-			return
+		for _, args := range arr {
+			res := h.dispatchCommand(ctx, args, sess)
+			if sess.Detached { // check BEFORE writing
+				return
+			}
+			if res == nil {
+				continue
+			}
+			if _, err := conn.Write(parser.Encode(res)); err != nil {
+				h.logger.Debug("write failed", "addr", conn.RemoteAddr(), "err", err)
+				return
+			}
 		}
 	}
 }

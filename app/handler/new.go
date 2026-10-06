@@ -2,14 +2,17 @@ package handler
 
 import (
 	"log/slog"
-	"os"
 
 	"my-redis/app/commands"
 )
 
 func New(env *commands.Env, fromMaster bool) *handler {
+	logger := slog.Default().With("component", "handler")
+	if fromMaster {
+		logger = logger.With("master", true)
+	}
 	return &handler{
-		logger:     slog.New(slog.NewTextHandler(os.Stderr, nil)),
+		logger:     logger,
 		env:        env,
 		fromMaster: fromMaster,
 	}

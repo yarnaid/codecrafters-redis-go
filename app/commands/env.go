@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/netip"
-	"os"
 	"strings"
 	"sync"
 
@@ -27,7 +26,7 @@ func NewEnv(coord *storage.Coordinator, repl *replication.Manager, cfg *config.C
 		Repl:        repl,
 		Coordinator: coord,
 		Reg:         DefaultRegistry(),
-		Log:         slog.New(slog.NewTextHandler(os.Stdout, nil)),
+		Log:         slog.Default(),
 		Cfg:         cfg,
 		Wg:          wg,
 	}
