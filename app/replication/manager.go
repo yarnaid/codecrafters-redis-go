@@ -1,6 +1,7 @@
 package replication
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -9,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"my-redis/app/parser"
 )
@@ -21,7 +24,7 @@ type Replica struct {
 	closed chan struct{}
 	once   sync.Once
 	logger *slog.Logger
-	ack    int
+	ack    atomic.Int32
 }
 
 func (r *Replica) Close() {
@@ -157,7 +160,7 @@ func (m *Manager) readLoop(r *Replica, reader *parser.Reader) {
 			if len(args) == 3 && strings.EqualFold(args[0], "REPLCONF") && strings.EqualFold(args[1], "ACK") {
 				if n, err := strconv.Atoi(args[2]); err == nil {
 					r.logger.Debug("received ACK", "ACK", n)
-					r.ack = n
+					r.ack.Store(int32(n))
 				}
 			}
 		}
@@ -182,6 +185,59 @@ func (m *Manager) Propagate(raw []byte) {
 	}
 }
 
-func (m *Manager) Count() int {
-	return len(m.replicas)
+func (m *Manager) sendLocked(raw []byte) {
+	for r := range m.replicas {
+		select {
+		case r.out <- raw: // shared read-only slice; do not mutate
+		default:
+			delete(m.replicas, r)
+			r.Close() // queue full: replica is too slow, drop it and let it resync
+		}
+	}
+}
+
+func (m *Manager) countAck(target int32) int {
+	var res int
+	for r := range m.replicas {
+		if r.ack.Load() >= target {
+			res++
+		}
+	}
+	// m.logger.Debug("got ack", "ack", res)
+	return res
+}
+
+func (m *Manager) Wait(ctx context.Context, target int, timeout time.Duration) int {
+	m.mu.Lock()
+	m.logger.Debug("start wait", "target", target, "timeout", timeout)
+	targetAck := m.offset
+	if m.offset == 0 || target == 0 {
+		m.mu.Unlock()
+		return len(m.replicas)
+	}
+	m.sendLocked(parser.StringsToBytes("REPLCONF", "GETACK", "*"))
+	if count := m.countAck(int32(targetAck)); count >= target {
+		m.mu.Unlock()
+		return count
+	}
+	m.mu.Unlock()
+
+	var timer <-chan time.Time
+	if timeout > 0 {
+		timer = time.After(timeout)
+	}
+	ticker := time.NewTicker(10 * time.Millisecond)
+	m.logger.Debug("start monitoring", "timer", timer, "ticker", ticker)
+	for {
+		if n := m.countAck(int32(targetAck)); n >= target {
+			return n
+		}
+		select {
+		case <-ticker.C:
+		case <-timer:
+			return m.countAck(int32(targetAck))
+		case <-ctx.Done():
+			return m.countAck(int32(targetAck))
+		}
+	}
 }
