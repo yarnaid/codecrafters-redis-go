@@ -1,7 +1,9 @@
 package replication
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"strconv"
@@ -67,8 +69,11 @@ func (m *Manager) Register(conn net.Conn, snapshot func() []byte, reader *parser
 	// go func() {
 	// 	timer := time.After(time.Second * 1)
 	// 	<-timer
+	// 	m.logger.Debug("sending PING to replicas")
+	// 	data, _ := parser.CommandFromStrings("PING").Serialize()
+	// 	r.conn.Write(data)
 	// 	m.logger.Debug("sending ACK to replicas")
-	// 	data, _ := parser.CommandFromStrings("REPLCONF", "GETACK", "*").Serialize()
+	// 	data, _ = parser.CommandFromStrings("REPLCONF", "GETACK", "*").Serialize()
 	// 	r.conn.Write(data)
 	// }()
 	return r
@@ -103,7 +108,11 @@ func (m *Manager) Role() Role {
 }
 
 func (m *Manager) remove(r *Replica) {
+	r.logger.Debug("removing client")
+	m.mu.Lock()
 	delete(m.replicas, r)
+	m.mu.Unlock()
+	r.Close()
 }
 
 func (m *Manager) writeLoop(r *Replica) {
@@ -113,6 +122,9 @@ func (m *Manager) writeLoop(r *Replica) {
 		select {
 		case b := <-r.out:
 			// m.logger.Debug("writing to replica", "addr", r.conn.RemoteAddr())
+			if len(b) == 0 {
+				r.logger.Warn("sending zero bytes")
+			}
 			if _, err := r.conn.Write(b); err != nil {
 				r.logger.Error("cannot write to replica", "err", err)
 				return
@@ -129,25 +141,34 @@ func (m *Manager) readLoop(r *Replica, reader *parser.Reader) {
 	defer m.remove(r)
 	for {
 		arr, err := reader.ReadArrays()
-		if len(arr) == 0 {
-			r.logger.Debug("received empty command from master")
-			continue
-		}
-		args := arr[0]
 		if err != nil {
-			r.logger.Error("cannot read cmds", "err", err)
+			if !errors.Is(err, io.EOF) {
+				r.logger.Error("cannot read cmds", "err", err)
+			}
+			r.logger.Info("closing replica connection")
 			return
 		}
-		if len(args) == 3 && strings.EqualFold(args[0], "REPLCONF") && strings.EqualFold(args[1], "ACK") {
-			if n, err := strconv.Atoi(args[2]); err == nil {
-				r.logger.Debug("received ACK", "ACK", n)
-				r.ack = n
+		r.logger.Debug("got from replica", "arr", arr)
+		if len(arr) == 0 {
+			r.logger.Error("received empty command from replica")
+			return
+		}
+		for _, args := range arr {
+			if len(args) == 3 && strings.EqualFold(args[0], "REPLCONF") && strings.EqualFold(args[1], "ACK") {
+				if n, err := strconv.Atoi(args[2]); err == nil {
+					r.logger.Debug("received ACK", "ACK", n)
+					r.ack = n
+				}
 			}
 		}
 	}
 }
 
 func (m *Manager) Propagate(raw []byte) {
+	if len(raw) == 0 {
+		m.logger.Warn("attempt to propagate empty cmd")
+		return
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.offset += int(len(raw))

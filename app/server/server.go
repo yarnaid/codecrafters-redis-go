@@ -39,7 +39,7 @@ func (s *server) Serve(ctx context.Context) {
 	}
 	go func() {
 		if err := s.listenMaster(ctx); err != nil {
-			logger.Error("Error connecting to master", "err", err.Error())
+			logger.Error("stop listening master", "err", err.Error())
 		}
 	}()
 	logger.Debug("[server] start listening", "addr", s.bind.String(), "port", s.port, "replica", s.env.Repl.Role() != replication.ReplicaRole, "id", s.env.Repl.ReplID())
@@ -53,7 +53,7 @@ func (s *server) Serve(ctx context.Context) {
 		conn, err := l.Accept()
 		if err != nil {
 			if errors.Is(err, net.ErrClosed) {
-				logger.Info("Connection closed", "addr", conn.RemoteAddr())
+				logger.Info("Connection closed")
 				os.Exit(0)
 			}
 			logger.Error("Error accepting connection", "error", err.Error())
@@ -61,7 +61,7 @@ func (s *server) Serve(ctx context.Context) {
 		}
 
 		h := handler.New(s.env, false)
-		go h.HandleConnection(ctx, conn)
+		go h.HandleConnection(ctx, conn, nil)
 	}
 }
 
@@ -72,49 +72,27 @@ func (s *server) listenMaster(ctx context.Context) error {
 	slog.Debug("[server][listenMaster] start connecting")
 	conn, err := s.dialMaster(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot dial master: %w", err)
 	}
 
-	line, err := s.handshake(conn)
+	line, br, err := s.handshake(conn)
 	if err != nil {
 		if err1 := conn.Close(); err1 != nil {
 			logger.Error("cannot init master conn", "err", err, "err2", err1)
 		}
-		return err
+		return fmt.Errorf("cannot handshake master: %w", err)
 	}
 	_ = conn.SetDeadline(time.Time{})
 	err = s.adoptMaster(line)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot adopt master: %w", err)
 	}
 
 	slog.Debug("[listenMaster] start replication from master")
 
-	// h := handler.New(s.env, true)
-	// go h.HandleConnection(ctx, conn)
-	//
-	sess := &commands.Session{}
-	r := parser.NewReader(conn)
-	handler := handler.New(s.env, true)
-	for {
-		arr, err := r.ReadArrays()
-		if err != nil {
-			return err
-		}
-		for _, args := range arr {
-			reply := handler.Dispatch(ctx, args, sess)
-			if strings.EqualFold(args[0], "REPLCONF") {
-				if _, err := conn.Write(parser.Encode(reply)); err != nil {
-					return err
-				}
-			}
-			cmd := parser.CommandFromStrings(args...)
-			bytes, _ := cmd.Serialize()
-			s.env.Repl.AddProcessed(len(bytes)) // counted AFTER the command, as Redis does
-		}
-	}
-
-	return nil
+	h := handler.New(s.env, true)
+	h.HandleConnection(ctx, conn, br)
+	return fmt.Errorf("master connection handler stopped")
 }
 
 func (s *server) dialMaster(ctx context.Context) (net.Conn, error) {
@@ -142,42 +120,45 @@ func (s *server) adoptMaster(line string) error {
 	if err != nil {
 		return err
 	}
-	s.env.Repl.AdoptMaster(replication.ReplID(fields[2]), offset)
+	s.env.Repl.AdoptMaster(replication.ReplID(fields[1]), offset)
 	return nil
 }
 
-func (s *server) handshake(conn net.Conn) (string, error) {
+func (s *server) handshake(conn net.Conn) (string, *bufio.Reader, error) {
 	br := bufio.NewReader(conn)
 	if _, err := sendToMaster(conn, br, "PING"); err != nil {
-		return "", err
+		return "", nil, err
 	}
 	if _, err := sendToMaster(conn, br, "REPLCONF", "listening-port", fmt.Sprint(s.port)); err != nil {
-		return "", err
+		return "", nil, err
 	}
 	if _, err := sendToMaster(conn, br, "REPLCONF", "capa", "psync2"); err != nil {
-		return "", err
+		return "", nil, err
 	}
 	var err error
 	var line string
 	if line, err = sendToMaster(conn, br, "PSYNC", "?", "-1"); err != nil {
-		return "", err
+		return "", nil, err
 	}
 	hdr, err := br.ReadString('\n')
 	if err != nil || hdr[0] != '$' {
-		return "", fmt.Errorf("handshake rdb header: %w", err)
+		return "", nil, fmt.Errorf("handshake RDB header: %w", err)
 	}
 	n, err := strconv.ParseInt(strings.TrimSpace(hdr[1:]), 10, 64)
 	if err != nil || n < 0 {
-		return "", errors.New("handshake: bad rdb length")
+		return "", nil, errors.New("handshake: bad RDB length")
 	}
 	_, err = io.CopyN(io.Discard, br, n)
 	s.env.Log.Debug("synced to master")
-	return line, err
+	return line, br, err
 }
 
 func sendToMaster(conn net.Conn, br *bufio.Reader, cmd ...string) (string, error) {
 	cmdArr := parser.CommandFromStrings(cmd...)
 	bytes, _ := cmdArr.Serialize()
+	if len(bytes) == 0 {
+		slog.Default().Debug("attempt to send empty data to master on handshake", "args", cmd)
+	}
 	_, err := conn.Write(bytes)
 	if err != nil {
 		return "", err
@@ -189,5 +170,6 @@ func sendToMaster(conn net.Conn, br *bufio.Reader, cmd ...string) (string, error
 	if line[0] == '-' {
 		return "", fmt.Errorf("handshake %s rejected: %s", cmd[0], strings.TrimSpace(line))
 	}
+	slog.Default().Debug("repl -> master", "sent", cmd, "received", line)
 	return line, nil
 }

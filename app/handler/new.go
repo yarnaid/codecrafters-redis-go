@@ -7,9 +7,9 @@ import (
 )
 
 func New(env *commands.Env, fromMaster bool) *handler {
-	logger := slog.Default().With("component", "handler")
+	logger := slog.Default().With("component", "handler").With("role", env.Repl.Role())
 	if fromMaster {
-		logger = logger.With("master", true)
+		logger = logger.With("fromMaster", true)
 	}
 	return &handler{
 		logger:     logger,

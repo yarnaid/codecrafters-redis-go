@@ -60,6 +60,9 @@ func (r *Reader) ReadArray() ([]string, error) {
 	l, err := readHead(r.rd, '*')
 	if err != nil {
 		if l == 0 {
+			if errors.Is(err, io.EOF) {
+				return nil, err
+			}
 			return nil, EmptyInputError
 		}
 		return nil, fmt.Errorf("cannot read array len: %w", err)
@@ -70,6 +73,9 @@ func (r *Reader) ReadArray() ([]string, error) {
 	for range l {
 		size, err := readHead(r.rd, '$')
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil, err
+			}
 			return nil, fmt.Errorf("cannot parse bulk string len: %w", err)
 		}
 		if size < 0 {
@@ -78,6 +84,9 @@ func (r *Reader) ReadArray() ([]string, error) {
 
 		buf := make([]byte, size+2)
 		if _, err := io.ReadFull(r.rd, buf); err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil, err
+			}
 			return nil, fmt.Errorf("invalid bulk string: %w", err)
 		}
 		if buf[size] != '\r' && buf[size+1] != '\n' {
@@ -92,6 +101,9 @@ func readHead(r *bufio.Reader, prefix byte) (int, error) {
 	line, err := r.ReadString('\n')
 	if err != nil {
 		return 0, err
+	}
+	if len(line) == 0 {
+		return 0, fmt.Errorf("got empty string from connection, left %d", r.Buffered())
 	}
 	if len(line) < 4 || line[0] != prefix || line[len(line)-2] != '\r' {
 		return 0, fmt.Errorf("bad header %q", line)

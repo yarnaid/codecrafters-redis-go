@@ -1,6 +1,7 @@
 package commands_test
 
 import (
+	"fmt"
 	"testing"
 
 	"my-redis/app/commands"
@@ -29,6 +30,25 @@ func TestSpec_Validate(t *testing.T) {
 			} else {
 				require.NoError(gotErr)
 			}
+		})
+	}
+}
+
+func TestFlag_Propagate(t *testing.T) {
+	tests := []struct {
+		f   commands.Flags
+		res bool
+	}{
+		{0, true},
+		{commands.FlagNotPropagate, false},
+		{commands.FlagBlocking, true},
+		{commands.FlagNotPropagate | commands.FlagBlocking, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprint(tt.f), func(t *testing.T) {
+			require := require.New(t)
+			require.Equal(tt.res, tt.f.Propagate())
 		})
 	}
 }

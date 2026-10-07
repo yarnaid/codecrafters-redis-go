@@ -1,7 +1,9 @@
 words = [
     "BLPOP",
+    "GETACK",
     "LRANGE",
     "PSYNC",
+    "RDB",
     "RPUSH",
     "Replconf",
     "Replicaof",

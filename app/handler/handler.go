@@ -28,9 +28,11 @@ type handler struct {
 	env        *commands.Env
 }
 
-func (h *handler) HandleConnection(ctx context.Context, conn net.Conn) {
+func (h *handler) HandleConnection(ctx context.Context, conn net.Conn, br *bufio.Reader) {
 	h.logger = h.logger.With("addr", conn.RemoteAddr())
-	br := bufio.NewReader(conn)
+	if br == nil {
+		br = bufio.NewReader(conn)
+	}
 	r := parser.NewReader(br) // one buffer shared by parser and watcher
 	sess := &commands.Session{
 		Queue:     make([]commands.QueueItem, 0),
@@ -39,7 +41,10 @@ func (h *handler) HandleConnection(ctx context.Context, conn net.Conn) {
 	}
 	sess.Watch = watchDisconnect(conn, br)
 	if sess.Role == replication.MasterRole {
-		sess.Register = func() { h.env.Repl.Register(conn, replication.EmptyDB, r); sess.Detached = true }
+		sess.Register = func() {
+			// h.env.Repl.Register(conn, replication.EmptyDB, r)
+			sess.Detached = true
+		}
 	}
 
 	stop := context.AfterFunc(ctx, func() {
@@ -51,30 +56,48 @@ func (h *handler) HandleConnection(ctx context.Context, conn net.Conn) {
 	defer stop()
 	defer func() {
 		if !sess.Detached { // a detached conn belongs to replication
-			h.logger.Debug("connection is not detached, closing")
+			h.logger.Debug("closing connection")
 			if err := conn.Close(); err != nil {
-				h.logger.Error("closing not detached conn", "err", err)
+				h.logger.Error("closing conn", "err", err)
 			}
 		}
 	}()
 
 	for {
-		h.logger.Debug("reading array")
 		arr, err := r.ReadArrays()
 		if err != nil {
 			h.logReadError(err)
 			return
 		}
+		if len(arr) == 0 {
+			h.logger.Warn("got empty commands array from client without error")
+		}
 		for _, args := range arr {
 			res := h.Dispatch(ctx, args, sess)
-			h.AddProcessed(args)
+			if sess.Detached {
+				// run() has returned, so the Peek goroutine is gone and the deadline is reset.
+				h.env.Repl.Register(conn, replication.EmptyDB, r)
+				return
+			}
+			if h.isReplica() && h.fromMaster {
+				h.AddProcessed(args)
+			}
 			if sess.Detached { // check BEFORE writing
+				h.logger.Debug("replica conn, move to detached mode", "cmd", args[0])
 				return
 			}
 			if res == nil {
 				continue
 			}
-			if _, err := conn.Write(parser.Encode(res)); err != nil {
+			if h.fromMaster && !isGetAck(args) {
+				h.logger.Debug("from master, don't response", "is_get_ack", isGetAck(args), "args", args)
+				continue
+			}
+			response := parser.Encode(res)
+			if len(response) == 0 {
+				h.logger.Debug("attempt to send an empty response", "args", args, "res", res)
+			}
+			if _, err := conn.Write(response); err != nil {
 				h.logger.Debug("write failed", "addr", conn.RemoteAddr(), "err", err)
 				return
 			}
@@ -82,14 +105,21 @@ func (h *handler) HandleConnection(ctx context.Context, conn net.Conn) {
 	}
 }
 
+func isGetAck(args []string) bool {
+	res := slices.Equal(args, []string{"REPLCONF", "GETACK", "*"})
+	// slog.Debug("ack?", "args", args, "res", res)
+	return res
+}
+
 func (h *handler) AddProcessed(args []string) {
 	cmd := parser.CommandFromStrings(args...)
 	bytes, _ := cmd.Serialize()
 	h.env.Repl.AddProcessed(len(bytes))
+	// h.logger.Debug("processed bytes", "n", len(bytes), "args", args)
 }
 
 func (h *handler) Dispatch(ctx context.Context, args []string, sess *commands.Session) parser.Serializable {
-	h.logger.Info("[dispatchCommand]", "args", args)
+	h.logger.Info("dispatching", "args", args)
 	name := strings.ToUpper(args[0])
 	args = args[1:]
 	switch name {
@@ -163,34 +193,32 @@ func (h *handler) run(ctx context.Context, cmd commands.Command, spec *commands.
 		ctx, stop = sess.Watch(ctx)
 		defer stop()
 	}
+	if h.isReplica() && !h.fromMaster && (spec.Flags&commands.FlagWrite != 0) {
+		return parser.SimpleError("ERR cannot write to replica")
+	}
 	r, err := cmd.Execute(ctx, h.env, sess)
 	if err != nil {
 		return parser.SimpleError(err.Error())
 	}
-	if !h.fromMaster && (spec.Flags&commands.FlagWrite != 0) {
-
-		toSend := parser.CommandFromStrings(slices.Insert(args, 0, spec.Name)...)
-		bytes, _ := toSend.Serialize()
+	if h.isMaster() && (spec.Flags.Propagate() || isGetAck(args)) {
+		cmdArgs := slices.Insert(args, 0, spec.Name)
+		toSend := parser.CommandFromStrings(cmdArgs...)
+		bytes, err := toSend.Serialize()
+		if err != nil {
+			h.logger.Warn("try to propagate zero bytes", "args", cmdArgs, "bytes", string(bytes))
+		}
 		h.env.Repl.Propagate(bytes)
+		h.logger.Debug("propagated", "args", cmdArgs)
 	}
 	return r
 }
 
-func toStringsSlice(input []parser.Serializable) ([]string, error) {
-	args := make([]string, len(input))
-	for i, s := range input {
-		switch v := s.(type) {
-		case parser.BulkString:
-			args[i] = string(v)
-		case parser.SimpleString:
-			args[i] = string(v)
-		default:
-			msg := "unexpected element type in command array"
-			return nil, errors.New(msg)
-		}
-	}
-	// logger.Debug("Stringify", "input", input, "output", args)
-	return args, nil
+func (h *handler) isReplica() bool {
+	return h.env.Repl.Role() == replication.ReplicaRole
+}
+
+func (h *handler) isMaster() bool {
+	return h.env.Repl.Role() == replication.MasterRole
 }
 
 func watchDisconnect(conn net.Conn, br *bufio.Reader) func(context.Context) (context.Context, func()) {

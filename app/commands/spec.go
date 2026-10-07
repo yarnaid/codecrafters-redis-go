@@ -8,7 +8,12 @@ const (
 	FlagWrite Flags = 1 << iota
 	FlagBlocking
 	FlagExclusive
+	FlagNotPropagate
 )
+
+func (f Flags) Propagate() bool {
+	return f&FlagNotPropagate == 0
+}
 
 // Spec describes one command. Parse builds a fresh Command per request.
 type Spec struct {
