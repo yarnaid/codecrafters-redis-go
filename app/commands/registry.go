@@ -51,6 +51,7 @@ func DefaultRegistry() *Registry {
 		Spec{Name: "XRANGE", MinArgs: 3, MaxArgs: 3, Parse: parseXRange},
 		Spec{Name: "XREAD", MinArgs: 1, MaxArgs: -1, Parse: parseXRead},
 		Spec{Name: "WAIT", MinArgs: 0, MaxArgs: -1, Flags: FlagNotPropagate, Parse: parseWait},
+		Spec{Name: "CONFIG", MinArgs: 0, MaxArgs: -1, Flags: FlagNotPropagate, Parse: parseConfig},
 
 		Spec{Name: "COMMAND", MaxArgs: -1, Flags: FlagNotPropagate, Parse: parseCommand},
 	)

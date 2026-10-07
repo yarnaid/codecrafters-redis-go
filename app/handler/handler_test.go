@@ -64,7 +64,7 @@ func initClient(t *testing.T) net.Conn {
 		&sync.WaitGroup{},
 	)
 	h := handler.New(env, false)
-	go h.HandleConnection(context.Background(), srv)
+	go h.HandleConnection(context.Background(), srv, nil)
 	return client
 }
 

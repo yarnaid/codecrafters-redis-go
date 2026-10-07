@@ -7,8 +7,10 @@ words = [
     "RPUSH",
     "Replconf",
     "Replicaof",
+    "Subcmd",
     "Unwatch",
     "XREAD",
     "capa",
+    "dbfilename",
     "replid",
 ]

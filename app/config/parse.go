@@ -22,6 +22,8 @@ func ParseConfig(args []string) (*Config, error) {
 	fs := flag.NewFlagSet("redis", flag.ContinueOnError)
 	fs.String("config", "", "TOML config file (optional)")
 	fs.StringVar(&cfg.Replicaof, "replicaof", "", "master server for replication")
+	fs.StringVar(&cfg.Dir, "dir", "/tmp/redis", "db file location")
+	fs.StringVar(&cfg.DBFilename, "dbfilename", "dump.rdb", "db file name")
 	fs.TextVar(&cfg.Bind, "bind", netip.MustParseAddr("127.0.0.1"), "bind IP address")
 	fs.TextVar(&cfg.Port, "port", Port(6379), "listen port")
 	fs.BoolVar(&cfg.Debug, "debug", true, "enable debug mode")
