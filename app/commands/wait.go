@@ -16,7 +16,8 @@ type WaitCommand struct {
 var _ Command = (*WaitCommand)(nil)
 
 func (w WaitCommand) Execute(ctx context.Context, env *Env, sess *Session) (parser.Serializable, error) {
-	return parser.Int(0), nil
+	count := env.Repl.Count()
+	return parser.Int(count), nil
 }
 
 func parseWait(args []string) (Command, error) {

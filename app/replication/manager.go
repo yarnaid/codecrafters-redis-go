@@ -181,3 +181,7 @@ func (m *Manager) Propagate(raw []byte) {
 		}
 	}
 }
+
+func (m *Manager) Count() int {
+	return len(m.replicas)
+}
