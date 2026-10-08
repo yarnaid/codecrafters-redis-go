@@ -1,6 +1,8 @@
 package server
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"os"
 	"path"
@@ -9,6 +11,8 @@ import (
 
 	"my-redis/app/commands"
 	"my-redis/app/config"
+	"my-redis/app/handler"
+	"my-redis/app/parser"
 	"my-redis/app/replication"
 	"my-redis/app/storage"
 	rdbfile "my-redis/app/storage/rdb_file"
@@ -53,13 +57,33 @@ func NewServer(cfg *config.Config) (*server, error) {
 		if err != nil {
 			return nil, err
 		}
+		aofName := filepath.Join(aofDir, m.Name)
+		applyAOF(aofName, env)
 		env.ManifestChan = make(chan string)
-		go startAOFWrite(filepath.Join(aofDir, m.Name), env.ManifestChan)
+		go startAOFWrite(aofName, env.ManifestChan)
 	}
 
+	env.Started = true
 	return &server{
 		bind: cfg.Bind,
 		port: cfg.Port,
 		env:  env,
 	}, nil
+}
+
+func applyAOF(filename string, env *commands.Env) error {
+	h := handler.New(env, false)
+	sess := commands.NewSession(env.Repl.Role())
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+	commands, err := parser.NewReader(bytes.NewReader(data)).ReadArrays()
+	if err != nil {
+		return err
+	}
+	for _, cmd := range commands {
+		h.Dispatch(context.Background(), cmd, sess)
+	}
+	return nil
 }

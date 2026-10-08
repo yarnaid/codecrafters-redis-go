@@ -23,6 +23,14 @@ type Session struct {
 	Watch    func(ctx context.Context) (context.Context, func()) // cancel ctx on client disconnect
 }
 
+func NewSession(role replication.Role) *Session {
+	return &Session{
+		Queue:     make([]QueueItem, 0),
+		Role:      role,
+		WatchList: make([]WatchItem, 0),
+	}
+}
+
 type WatchItem struct {
 	Key     string
 	Version int

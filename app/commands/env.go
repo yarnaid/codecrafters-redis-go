@@ -20,6 +20,7 @@ type Env struct {
 	Cfg          *config.Config
 	Wg           *sync.WaitGroup
 	ManifestChan chan string
+	Started      bool
 }
 
 func NewEnv(coord *storage.Coordinator, repl *replication.Manager, cfg *config.Config, wg *sync.WaitGroup) *Env {

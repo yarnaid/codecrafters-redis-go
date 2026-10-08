@@ -34,11 +34,7 @@ func (h *handler) HandleConnection(ctx context.Context, conn net.Conn, br *bufio
 		br = bufio.NewReader(conn)
 	}
 	r := parser.NewReader(br) // one buffer shared by parser and watcher
-	sess := &commands.Session{
-		Queue:     make([]commands.QueueItem, 0),
-		Role:      h.env.Repl.Role(),
-		WatchList: make([]commands.WatchItem, 0),
-	}
+	sess := commands.NewSession(h.env.Repl.Role())
 	sess.Watch = watchDisconnect(conn, br)
 	if sess.Role == replication.MasterRole {
 		sess.Register = func() {
@@ -200,7 +196,7 @@ func (h *handler) run(ctx context.Context, cmd commands.Command, spec *commands.
 	if err != nil {
 		return parser.SimpleError(err.Error())
 	}
-	if h.isMaster() && h.env.Cfg.AppendOnly == "yes" && (spec.Flags&commands.FlagWrite != 0) {
+	if h.isMaster() && h.env.Cfg.AppendOnly == "yes" && (spec.Flags&commands.FlagWrite != 0) && h.env.Started {
 		cmdArgs := slices.Insert(args, 0, spec.Name)
 		toSend := parser.CommandFromStrings(cmdArgs...)
 		bytes, _ := toSend.Serialize()
