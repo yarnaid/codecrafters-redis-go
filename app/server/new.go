@@ -34,11 +34,11 @@ func NewServer(cfg *config.Config) (*server, error) {
 
 	if cfg.AppendOnly == "yes" {
 		aofDir := path.Join(cfg.Dir, cfg.AppendDirName)
-		_, err := createAOF(aofDir, cfg.AppendFileName)
+		newFileName, err := createAOF(aofDir, cfg.AppendFileName)
 		if err != nil {
 			return nil, err
 		}
-		createManifest(aofDir, cfg.AppendFileName)
+		createManifest(aofDir, cfg.AppendFileName, newFileName)
 		if err != nil {
 			return nil, err
 		}
@@ -51,12 +51,12 @@ func NewServer(cfg *config.Config) (*server, error) {
 	}, nil
 }
 
-func createManifest(dir, name string) error {
+func createManifest(dir, name string, aofName string) error {
 	f, err := os.OpenFile(filepath.Join(dir, name)+".manifest", os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		return err
 	}
-	if _, err = f.WriteString(fmt.Sprintf("file %s seq 1 type i", name)); err != nil {
+	if _, err = f.WriteString(fmt.Sprintf("file %s seq 1 type i", aofName)); err != nil {
 		return err
 	}
 	return nil
