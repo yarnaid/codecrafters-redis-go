@@ -13,12 +13,13 @@ import (
 )
 
 type Env struct {
-	Repl        *replication.Manager
-	Coordinator *storage.Coordinator
-	Reg         *Registry
-	Log         *slog.Logger
-	Cfg         *config.Config
-	Wg          *sync.WaitGroup
+	Repl         *replication.Manager
+	Coordinator  *storage.Coordinator
+	Reg          *Registry
+	Log          *slog.Logger
+	Cfg          *config.Config
+	Wg           *sync.WaitGroup
+	ManifestChan chan string
 }
 
 func NewEnv(coord *storage.Coordinator, repl *replication.Manager, cfg *config.Config, wg *sync.WaitGroup) *Env {

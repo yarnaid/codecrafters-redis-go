@@ -36,3 +36,27 @@ func TestNewAOFName(t *testing.T) {
 	require.NoError(err)
 	require.Equal("a.1.incr.aof", res)
 }
+
+func TestParseManifest(t *testing.T) {
+	tests := []struct {
+		name string
+		s    string
+		m    server.Manifest
+		err  error
+	}{
+		{"simple", "file test.aof.1.incr.aof seq 1 type i", server.Manifest{"test.aof.1.incr.aof", 1, "i"}, nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			actual, err := server.ParseManifest(tt.s)
+			if tt.err != nil {
+				require.Error(err)
+			} else {
+				require.NoError(err)
+				require.Equal(tt.m, actual)
+			}
+		})
+	}
+}

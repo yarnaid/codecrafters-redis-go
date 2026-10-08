@@ -200,6 +200,12 @@ func (h *handler) run(ctx context.Context, cmd commands.Command, spec *commands.
 	if err != nil {
 		return parser.SimpleError(err.Error())
 	}
+	if h.isMaster() && h.env.Cfg.AppendOnly == "yes" {
+		cmdArgs := slices.Insert(args, 0, spec.Name)
+		toSend := parser.CommandFromStrings(cmdArgs...)
+		bytes, _ := toSend.Serialize()
+		h.env.ManifestChan <- string(bytes)
+	}
 	if h.isMaster() && (spec.Flags.Propagate() || isGetAck(args)) {
 		cmdArgs := slices.Insert(args, 0, spec.Name)
 		toSend := parser.CommandFromStrings(cmdArgs...)
