@@ -2,6 +2,8 @@ package server
 
 import (
 	"log/slog"
+	"os"
+	"path"
 	"sync"
 
 	"my-redis/app/commands"
@@ -27,6 +29,10 @@ func NewServer(cfg *config.Config) (*server, error) {
 	globalWait := sync.WaitGroup{}
 	repl := replication.New(role)
 	env := commands.NewEnv(coordinator, repl, cfg, &globalWait)
+
+	if cfg.AppendOnly == "yes" {
+		os.MkdirAll(path.Join(cfg.Dir, cfg.AppendDirName), 0o666)
+	}
 	return &server{
 		bind: cfg.Bind,
 		port: cfg.Port,
