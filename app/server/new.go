@@ -1,9 +1,12 @@
 package server
 
 import (
-	"log/slog"
+	"fmt"
 	"os"
 	"path"
+	"path/filepath"
+	"regexp"
+	"strconv"
 	"sync"
 
 	"my-redis/app/commands"
@@ -24,18 +27,73 @@ func NewServer(cfg *config.Config) (*server, error) {
 	if err != nil {
 		return nil, err
 	}
-	slog.Default().Debug("snapshot loaded", "len_keys", len(snap.Data), "data", snap.Data)
 	coordinator := storage.NewMemoryCoordinator(snap.ToMemoryBackend())
 	globalWait := sync.WaitGroup{}
 	repl := replication.New(role)
 	env := commands.NewEnv(coordinator, repl, cfg, &globalWait)
 
 	if cfg.AppendOnly == "yes" {
-		os.MkdirAll(path.Join(cfg.Dir, cfg.AppendDirName), 0o666)
+		_, err = createAOF(path.Join(cfg.Dir, cfg.AppendDirName), cfg.AppendFileName)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	return &server{
 		bind: cfg.Bind,
 		port: cfg.Port,
 		env:  env,
 	}, nil
+}
+
+func createAOF(dir, name string) (string, error) {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+
+	newName, err := newAOFFileName(dir, name)
+	if err != nil {
+		return "", err
+	}
+	f, err := os.OpenFile(filepath.Join(dir, newName), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	if err != nil {
+		return "", fmt.Errorf("cannot create file: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		return "", err
+	}
+	return newName, nil
+}
+
+func newAOFFileName(aofPath, name string) (string, error) {
+	fileNames, err := filepath.Glob(fmt.Sprintf("%s.*.incr.aof", name))
+	if err != nil {
+		return "", err
+	}
+	next, err := getNextAOFIncr(fileNames, name)
+	if err != nil {
+		return "", nil
+	}
+	newName := fmt.Sprintf("%s.%d.incr.aof", name, next)
+	return newName, nil
+}
+
+func getNextAOFIncr(prev []string, fname string) (int, error) {
+	re, err := regexp.Compile(fmt.Sprintf("^%s\\.(\\d+)\\.incr.aof$", fname))
+	if err != nil {
+		return -1, err
+	}
+	res := 0
+	for _, s := range prev {
+		sm := re.FindStringSubmatch(s)
+		if len(sm) == 0 {
+			continue
+		}
+		num, err := strconv.Atoi(sm[1])
+		if err != nil {
+			return -1, err
+		}
+		res = max(res, num)
+	}
+	return res + 1, nil
 }

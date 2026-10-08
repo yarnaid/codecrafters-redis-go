@@ -20,7 +20,7 @@ func Load(path, name string) (*Snapshot, error) {
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			var err1 error
-			file, err1 = createEmptyDB(dbFilePath)
+			file, err1 = createEmptyDB(path, name)
 			if err1 != nil {
 				logger.Error("failed creating a new rdb file", "err", err, "err1", err1)
 			}
@@ -31,8 +31,12 @@ func Load(path, name string) (*Snapshot, error) {
 	return Parse(file)
 }
 
-func createEmptyDB(dbFilePath string) (*os.File, error) {
+func createEmptyDB(path, name string) (*os.File, error) {
 	data := replication.EmptyDBContent()
+	if err := os.MkdirAll(path, 0o755); err != nil {
+		return nil, err
+	}
+	dbFilePath := filepath.Join(path, name)
 	os.WriteFile(dbFilePath, data, 0o666)
 	return os.Open(dbFilePath)
 	// return nil, fmt.Errorf("empty db creation is not implemented")
