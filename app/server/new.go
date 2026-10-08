@@ -38,7 +38,7 @@ func NewServer(cfg *config.Config) (*server, error) {
 		if err != nil {
 			return nil, err
 		}
-		createManifest(aofDir, newFileName)
+		createManifest(aofDir, cfg.AppendFileName)
 		if err != nil {
 			return nil, err
 		}
