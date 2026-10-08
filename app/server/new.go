@@ -33,7 +33,12 @@ func NewServer(cfg *config.Config) (*server, error) {
 	env := commands.NewEnv(coordinator, repl, cfg, &globalWait)
 
 	if cfg.AppendOnly == "yes" {
-		_, err = createAOF(path.Join(cfg.Dir, cfg.AppendDirName), cfg.AppendFileName)
+		aofDir := path.Join(cfg.Dir, cfg.AppendDirName)
+		newFileName, err := createAOF(aofDir, cfg.AppendFileName)
+		if err != nil {
+			return nil, err
+		}
+		createManifest(aofDir, newFileName)
 		if err != nil {
 			return nil, err
 		}
@@ -44,6 +49,17 @@ func NewServer(cfg *config.Config) (*server, error) {
 		port: cfg.Port,
 		env:  env,
 	}, nil
+}
+
+func createManifest(dir, name string) error {
+	f, err := os.OpenFile(filepath.Join(dir, name), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return err
+	}
+	if _, err = f.WriteString(fmt.Sprintf("file %s seq 1 type i", name)); err != nil {
+		return err
+	}
+	return nil
 }
 
 func createAOF(dir, name string) (string, error) {
