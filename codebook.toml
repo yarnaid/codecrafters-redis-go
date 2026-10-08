@@ -12,5 +12,7 @@ words = [
     "XREAD",
     "capa",
     "dbfilename",
+    "lzf",
+    "rdbfile",
     "replid",
 ]

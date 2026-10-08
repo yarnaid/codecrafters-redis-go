@@ -6,8 +6,13 @@ import (
 	"strconv"
 )
 
-func EmptyDB() []byte {
+func EmptyDBContent() []byte {
 	data, _ := base64.StdEncoding.DecodeString("UkVESVMwMDEx+glyZWRpcy12ZXIFNy4yLjD6CnJlZGlzLWJpdHPAQPoFY3RpbWXCbQi8ZfoIdXNlZC1tZW3CsMQQAPoIYW9mLWJhc2XAAP/wbjv+wP9aog==")
+	return data
+}
+
+func EmptyDB() []byte {
+	data := EmptyDBContent()
 	header := strconv.AppendInt([]byte{'$'}, int64(len(data)), 10)
 	header = append(header, '\r', '\n')
 

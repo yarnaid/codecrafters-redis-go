@@ -1,6 +1,8 @@
 package storage
 
-import "log/slog"
+import (
+	"log/slog"
+)
 
 type MemoryBackend struct {
 	data map[string]*Value
@@ -34,4 +36,17 @@ func (m *MemoryBackend) Set(key string, v *Value) {
 
 func (m *MemoryBackend) Delete(key string) {
 	delete(m.data, key)
+}
+
+func (m *MemoryBackend) Keys(pat string) []string {
+	res := make([]string, len(m.data))
+	var i int
+	for k := range m.data {
+		slog.Debug("iter", "key", k, "res", res)
+		if k != "" {
+			res[i] = k
+			i++
+		}
+	}
+	return res[:i]
 }

@@ -1,12 +1,14 @@
 package server
 
 import (
+	"log/slog"
 	"sync"
 
 	"my-redis/app/commands"
 	"my-redis/app/config"
 	"my-redis/app/replication"
 	"my-redis/app/storage"
+	rdbfile "my-redis/app/storage/rdb_file"
 )
 
 func NewServer(cfg *config.Config) (*server, error) {
@@ -16,7 +18,12 @@ func NewServer(cfg *config.Config) (*server, error) {
 	} else {
 		role = replication.MasterRole
 	}
-	coordinator := storage.NewMemoryCoordinator(nil)
+	snap, err := rdbfile.Load(cfg.Dir, cfg.DBFilename)
+	if err != nil {
+		return nil, err
+	}
+	slog.Default().Debug("snapshot loaded", "len_keys", len(snap.Data), "data", snap.Data)
+	coordinator := storage.NewMemoryCoordinator(snap.ToMemoryBackend())
 	globalWait := sync.WaitGroup{}
 	repl := replication.New(role)
 	env := commands.NewEnv(coordinator, repl, cfg, &globalWait)

@@ -142,3 +142,7 @@ func (c *Coordinator) getVersionsLocked(keys ...string) []int {
 	}
 	return versions
 }
+
+func (c *Coordinator) Keys(pat string) []string {
+	return c.backend.Keys(pat)
+}
