@@ -34,7 +34,7 @@ func NewServer(cfg *config.Config) (*server, error) {
 
 	if cfg.AppendOnly == "yes" {
 		aofDir := path.Join(cfg.Dir, cfg.AppendDirName)
-		newFileName, err := createAOF(aofDir, cfg.AppendFileName)
+		_, err := createAOF(aofDir, cfg.AppendFileName)
 		if err != nil {
 			return nil, err
 		}
