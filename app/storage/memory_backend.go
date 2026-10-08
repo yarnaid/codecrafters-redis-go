@@ -2,6 +2,8 @@ package storage
 
 import (
 	"log/slog"
+	"maps"
+	"slices"
 )
 
 type MemoryBackend struct {
@@ -39,14 +41,6 @@ func (m *MemoryBackend) Delete(key string) {
 }
 
 func (m *MemoryBackend) Keys(pat string) []string {
-	res := make([]string, len(m.data))
-	var i int
-	for k := range m.data {
-		slog.Debug("iter", "key", k, "res", res)
-		if k != "" {
-			res[i] = k
-			i++
-		}
-	}
-	return res[:i]
+	it := maps.Keys(m.data)
+	return slices.AppendSeq([]string{}, it)
 }

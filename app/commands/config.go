@@ -17,12 +17,9 @@ var _ Command = (*ConfigCommand)(nil)
 
 func (c *ConfigCommand) Execute(ctx context.Context, env *Env, sess *Session) (parser.Serializable, error) {
 	var v string
-	switch c.Args[0] {
-	case "dir":
-		v = env.Cfg.Dir
-	case "dbfilename":
-		v = env.Cfg.DBFilename
-	default:
+	cfg, _ := env.Cfg.ToMap()
+	v, ok := cfg[c.Args[0]]
+	if !ok {
 		return nil, fmt.Errorf("config key not found: %s", c.Args[0])
 	}
 	return parser.CommandFromStrings(c.Args[0], v), nil
