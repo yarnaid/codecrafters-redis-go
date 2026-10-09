@@ -12,12 +12,19 @@ type QueueItem struct {
 	Args []string
 }
 
+type Subscription struct{}
+
+func NewSubscription() *Subscription {
+	return &Subscription{}
+}
+
 type Session struct {
-	InMulti   bool
-	Queue     []QueueItem
-	Role      replication.Role
-	WatchList []WatchItem
-	Register  func()
+	InMulti       bool
+	Queue         []QueueItem
+	Role          replication.Role
+	WatchList     []WatchItem
+	Register      func()
+	Subscriptions map[string]*Subscription
 
 	Detached bool                                                // stop replica conn handling, not close
 	Watch    func(ctx context.Context) (context.Context, func()) // cancel ctx on client disconnect
@@ -25,9 +32,10 @@ type Session struct {
 
 func NewSession(role replication.Role) *Session {
 	return &Session{
-		Queue:     make([]QueueItem, 0),
-		Role:      role,
-		WatchList: make([]WatchItem, 0),
+		Queue:         make([]QueueItem, 0),
+		Role:          role,
+		WatchList:     make([]WatchItem, 0),
+		Subscriptions: map[string]*Subscription{},
 	}
 }
 
