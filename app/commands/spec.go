@@ -9,10 +9,15 @@ const (
 	FlagBlocking
 	FlagExclusive
 	FlagNotPropagate
+	FlagAllowedInSubs
 )
 
 func (f Flags) Propagate() bool {
 	return f&FlagNotPropagate == 0
+}
+
+func (f Flags) Has(prop Flags) bool {
+	return f&prop == prop
 }
 
 // Spec describes one command. Parse builds a fresh Command per request.

@@ -16,6 +16,7 @@ func (s *SubscribeCommand) Execute(ctx context.Context, env *Env, sess *Session)
 	if _, ok := sess.Subscriptions[s.Subs[0]]; !ok {
 		sess.Subscriptions[s.Subs[0]] = NewSubscription()
 	}
+	sess.Mode = ModeSub
 	return parser.Array[parser.Serializable]{parser.BulkString("subscribe"), parser.BulkString(s.Subs[0]), parser.Int(len(sess.Subscriptions))}, nil
 }
 

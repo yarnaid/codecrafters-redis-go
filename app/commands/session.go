@@ -18,6 +18,13 @@ func NewSubscription() *Subscription {
 	return &Subscription{}
 }
 
+type Mode int
+
+const (
+	ModeNormal Mode = iota
+	ModeSub
+)
+
 type Session struct {
 	InMulti       bool
 	Queue         []QueueItem
@@ -25,6 +32,7 @@ type Session struct {
 	WatchList     []WatchItem
 	Register      func()
 	Subscriptions map[string]*Subscription
+	Mode          Mode
 
 	Detached bool                                                // stop replica conn handling, not close
 	Watch    func(ctx context.Context) (context.Context, func()) // cancel ctx on client disconnect
