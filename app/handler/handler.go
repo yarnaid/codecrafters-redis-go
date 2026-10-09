@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"my-redis/app/client"
 	"my-redis/app/commands"
 	"my-redis/app/parser"
 	"my-redis/app/replication"
@@ -23,18 +24,20 @@ import (
 const BufferSize = 512
 
 type handler struct {
+	addr       net.Addr
 	fromMaster bool
 	logger     *slog.Logger
 	env        *commands.Env
 }
 
 func (h *handler) HandleConnection(ctx context.Context, conn net.Conn, br *bufio.Reader) {
-	h.logger = h.logger.With("addr", conn.RemoteAddr())
+	h.addr = conn.RemoteAddr()
+	h.logger = h.logger.With("addr", h.addr)
 	if br == nil {
 		br = bufio.NewReader(conn)
 	}
 	r := parser.NewReader(br) // one buffer shared by parser and watcher
-	sess := commands.NewSession(h.env.Repl.Role())
+	sess := commands.NewSession(h.env.Repl.Role(), client.NewClient(conn))
 	sess.Watch = watchDisconnect(conn, br)
 	if sess.Role == replication.MasterRole {
 		sess.Register = func() {
@@ -44,18 +47,14 @@ func (h *handler) HandleConnection(ctx context.Context, conn net.Conn, br *bufio
 	}
 
 	stop := context.AfterFunc(ctx, func() {
-		if err := conn.Close(); err != nil {
-			h.logger.Error("error closing connection", "err", err)
-		}
+		sess.Client.Close()
 		h.logger.Debug("closing handler conn after ctx")
 	}) // parent ctx, no goroutine
 	defer stop()
 	defer func() {
 		if !sess.Detached { // a detached conn belongs to replication
 			h.logger.Debug("closing connection")
-			if err := conn.Close(); err != nil {
-				h.logger.Error("closing conn", "err", err)
-			}
+			sess.Client.Close()
 		}
 	}()
 
@@ -71,8 +70,7 @@ func (h *handler) HandleConnection(ctx context.Context, conn net.Conn, br *bufio
 		for _, args := range arr {
 			res := h.Dispatch(ctx, args, sess)
 			if sess.Detached {
-				// run() has returned, so the Peek goroutine is gone and the deadline is reset.
-				h.env.Repl.Register(conn, replication.EmptyDB, r)
+				h.env.Repl.Register(sess.Client, replication.EmptyDB, r)
 				return
 			}
 			if h.isReplica() && h.fromMaster {
@@ -93,8 +91,8 @@ func (h *handler) HandleConnection(ctx context.Context, conn net.Conn, br *bufio
 			if len(response) == 0 {
 				h.logger.Debug("attempt to send an empty response", "args", args, "res", res)
 			}
-			if _, err := conn.Write(response); err != nil {
-				h.logger.Debug("write failed", "addr", conn.RemoteAddr(), "err", err)
+			if !sess.Client.Reply(response) {
+				h.logger.Debug("closing connection")
 				return
 			}
 		}

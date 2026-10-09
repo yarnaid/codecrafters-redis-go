@@ -13,11 +13,9 @@ type SubscribeCommand struct {
 var _ Command = (*SubscribeCommand)(nil)
 
 func (s *SubscribeCommand) Execute(ctx context.Context, env *Env, sess *Session) (parser.Serializable, error) {
-	if _, ok := sess.Subscriptions[s.Subs[0]]; !ok {
-		sess.Subscriptions[s.Subs[0]] = NewSubscription()
-	}
+	n := env.Broker.Subscribe(sess.Client, s.Subs[0])
 	sess.Mode = ModeSub
-	return parser.Array[parser.Serializable]{parser.BulkString("subscribe"), parser.BulkString(s.Subs[0]), parser.Int(len(sess.Subscriptions))}, nil
+	return parser.Array[parser.Serializable]{parser.BulkString("subscribe"), parser.BulkString(s.Subs[0]), parser.Int(n)}, nil
 }
 
 func parseSubscribe(args []string) (Command, error) {

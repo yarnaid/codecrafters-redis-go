@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 
+	"my-redis/app/client"
 	"my-redis/app/replication"
 )
 
@@ -10,12 +11,6 @@ type QueueItem struct {
 	Cmd  Command
 	Spec Spec
 	Args []string
-}
-
-type Subscription struct{}
-
-func NewSubscription() *Subscription {
-	return &Subscription{}
 }
 
 type Mode int
@@ -26,24 +21,24 @@ const (
 )
 
 type Session struct {
-	InMulti       bool
-	Queue         []QueueItem
-	Role          replication.Role
-	WatchList     []WatchItem
-	Register      func()
-	Subscriptions map[string]*Subscription
-	Mode          Mode
+	InMulti   bool
+	Queue     []QueueItem
+	Role      replication.Role
+	WatchList []WatchItem
+	Client    *client.Client
+	Register  func()
+	Mode      Mode
 
 	Detached bool                                                // stop replica conn handling, not close
 	Watch    func(ctx context.Context) (context.Context, func()) // cancel ctx on client disconnect
 }
 
-func NewSession(role replication.Role) *Session {
+func NewSession(role replication.Role, c *client.Client) *Session {
 	return &Session{
-		Queue:         make([]QueueItem, 0),
-		Role:          role,
-		WatchList:     make([]WatchItem, 0),
-		Subscriptions: map[string]*Subscription{},
+		Queue:     make([]QueueItem, 0),
+		Role:      role,
+		WatchList: make([]WatchItem, 0),
+		Client:    c,
 	}
 }
 

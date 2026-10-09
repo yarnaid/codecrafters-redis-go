@@ -73,7 +73,7 @@ func NewServer(cfg *config.Config) (*server, error) {
 
 func applyAOF(filename string, env *commands.Env) error {
 	h := handler.New(env, false)
-	sess := commands.NewSession(env.Repl.Role())
+	sess := commands.NewSession(env.Repl.Role(), nil)
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		return err

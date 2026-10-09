@@ -7,18 +7,21 @@ import (
 	"strings"
 	"sync"
 
+	"my-redis/app/broker"
 	"my-redis/app/config"
 	"my-redis/app/replication"
 	"my-redis/app/storage"
 )
 
 type Env struct {
-	Repl         *replication.Manager
-	Coordinator  *storage.Coordinator
-	Reg          *Registry
-	Log          *slog.Logger
-	Cfg          *config.Config
-	Wg           *sync.WaitGroup
+	Repl        *replication.Manager
+	Coordinator *storage.Coordinator
+	Reg         *Registry
+	Log         *slog.Logger
+	Cfg         *config.Config
+	Wg          *sync.WaitGroup
+	Broker      *broker.Broker
+
 	ManifestChan chan string
 	Started      bool
 }
@@ -31,6 +34,7 @@ func NewEnv(coord *storage.Coordinator, repl *replication.Manager, cfg *config.C
 		Log:         slog.Default(),
 		Cfg:         cfg,
 		Wg:          wg,
+		Broker:      broker.New(),
 	}
 }
 
