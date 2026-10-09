@@ -1,15 +1,20 @@
+//go:generate go tool stringer -type=Flags -linecomment
 package commands
 
-import "fmt"
+import (
+	"fmt"
+	"math/bits"
+	"strings"
+)
 
 type Flags uint8
 
 const (
-	FlagWrite Flags = 1 << iota
-	FlagBlocking
-	FlagExclusive
-	FlagNotPropagate
-	FlagAllowedInSubs
+	FlagWrite         Flags = 1 << iota // write
+	FlagBlocking                        // blocking
+	FlagExclusive                       // exclusive
+	FlagNotPropagate                    // not_propagate
+	FlagAllowedInSubs                   // allowed_in_subs
 )
 
 func (f Flags) Propagate() bool {
@@ -18,6 +23,19 @@ func (f Flags) Propagate() bool {
 
 func (f Flags) Has(prop Flags) bool {
 	return f&prop == prop
+}
+
+func FlagsToString(f Flags) string {
+	if f == 0 {
+		return "none"
+	}
+	var parts []string
+	// Iterate set bits from lowest to highest: deterministic order.
+	for v := uint8(f); v != 0; v &= v - 1 {
+		bit := Flags(1 << bits.TrailingZeros8(v)) // math/bits
+		parts = append(parts, fmt.Sprint(bit))
+	}
+	return strings.Join(parts, "|")
 }
 
 // Spec describes one command. Parse builds a fresh Command per request.

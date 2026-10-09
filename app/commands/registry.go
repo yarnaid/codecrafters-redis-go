@@ -39,7 +39,7 @@ func DefaultRegistry() *Registry {
 		Spec{Name: "LPUSH", MinArgs: 2, MaxArgs: -1, Flags: FlagWrite, Parse: parseLPush},
 		Spec{Name: "LRANGE", MinArgs: 3, MaxArgs: 3, Parse: parseLRange},
 		Spec{Name: "MULTI", MinArgs: 0, MaxArgs: 0, Parse: parseMulti},
-		Spec{Name: "PING", MinArgs: 0, MaxArgs: 0, Flags: FlagNotPropagate, Parse: parsePing},
+		Spec{Name: "PING", MinArgs: 0, MaxArgs: 0, Flags: FlagNotPropagate | FlagAllowedInSubs, Parse: parsePing},
 		Spec{Name: "PSYNC", MinArgs: 0, MaxArgs: 2, Flags: FlagNotPropagate, Parse: parsePSync},
 		Spec{Name: "REPLCONF", MinArgs: 1, MaxArgs: -1, Flags: FlagNotPropagate, Parse: parseReplconf},
 		Spec{Name: "RPUSH", MinArgs: 1, MaxArgs: -1, Flags: FlagWrite, Parse: parseRPush},

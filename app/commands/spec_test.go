@@ -52,3 +52,26 @@ func TestFlag_Propagate(t *testing.T) {
 		})
 	}
 }
+
+func TestFlags_Has(t *testing.T) {
+	tests := []struct {
+		name    string
+		flag    commands.Flags
+		another commands.Flags
+		has     bool
+	}{
+		{"one has one", 1, 1, true},
+		{"2 has one", 3, 1, true},
+		{"2 has one", 3, 2, true},
+		{"1 doesn't have one", 4, 2, false},
+		{"allowed in subs", commands.FlagNotPropagate & commands.FlagAllowedInSubs, commands.FlagAllowedInSubs, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			actual := tt.flag.Has(tt.another)
+			require.Equal(tt.has, actual)
+		})
+	}
+}

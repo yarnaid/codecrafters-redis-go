@@ -152,6 +152,7 @@ func (h *handler) Dispatch(ctx context.Context, args []string, sess *commands.Se
 	}
 
 	if sess.Mode == commands.ModeSub && !cmdSpec.Flags.Has(commands.FlagAllowedInSubs) {
+		h.logger.Debug("not allowed in sub mode", "name", cmdSpec.Name, "flags", commands.FlagsToString(cmdSpec.Flags), "(flags)", cmdSpec.Flags, "spec", cmdSpec)
 		return parser.SimpleError(fmt.Sprintf("ERR Can't execute '%s' in subscription mode", cmdSpec.Name))
 	}
 
