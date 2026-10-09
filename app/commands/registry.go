@@ -53,6 +53,7 @@ func DefaultRegistry() *Registry {
 		Spec{Name: "WAIT", MinArgs: 0, MaxArgs: -1, Flags: FlagNotPropagate, Parse: parseWait},
 		Spec{Name: "CONFIG", MinArgs: 0, MaxArgs: -1, Flags: FlagNotPropagate, Parse: parseConfig},
 		Spec{Name: "KEYS", MinArgs: 0, MaxArgs: 1, Parse: parseKeys},
+		Spec{Name: "SUBSCRIBE", MinArgs: 1, MaxArgs: -1, Parse: parseSubscribe},
 
 		Spec{Name: "COMMAND", MaxArgs: -1, Flags: FlagNotPropagate, Parse: parseCommand},
 	)
