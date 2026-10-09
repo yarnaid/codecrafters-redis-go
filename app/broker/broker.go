@@ -75,7 +75,7 @@ func (b *Broker) unsubscribeLocked(c *client.Client, ch string) {
 }
 
 func (b *Broker) Publish(ch, msg string) int {
-	data := parser.StringsToBytes(ch, msg)
+	data := parser.StringsToBytes("message", ch, msg)
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	var n int
