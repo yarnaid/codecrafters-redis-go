@@ -123,7 +123,7 @@ func (s *MemoryStorage) LRange(key string, start, end int) parser.Array[parser.S
 	if end >= 0 {
 		end = min(len(arr)-1, end)
 	}
-	start, end = invert_index(start, len(arr)), invert_index(end, len(arr))
+	start, end = invertIndex(start, len(arr)), invertIndex(end, len(arr))
 	for _, v := range arr[start : end+1] {
 		res = append(res, parser.ToSerializable(v))
 	}

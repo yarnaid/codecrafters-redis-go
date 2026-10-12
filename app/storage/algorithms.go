@@ -9,12 +9,12 @@ func rangeList[T ~[]E, E any](list T, start, end int) T {
 	if end >= 0 {
 		end = min(l-1, end)
 	}
-	start, end = invert_index(start, l), invert_index(end, l)
+	start, end = invertIndex(start, l), invertIndex(end, l)
 	// slog.Debug("[Storage][LRange] returning", "list", list, "start", start, "end", end)
 	return list[start : end+1]
 }
 
-func invert_index(i, ln int) int {
+func invertIndex(i, ln int) int {
 	if i >= 0 {
 		return i
 	} else {

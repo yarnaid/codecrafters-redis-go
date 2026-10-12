@@ -49,7 +49,7 @@ func TestInvertIndex(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%d from %d", tt.val, tt.ln), func(t *testing.T) {
 			require := require.New(t)
-			actual := invert_index(tt.val, tt.ln)
+			actual := invertIndex(tt.val, tt.ln)
 			require.Equal(tt.expected, actual)
 		})
 	}
