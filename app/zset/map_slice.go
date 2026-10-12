@@ -78,3 +78,14 @@ func (z *ZSetMapSlice) Score(key string) (float64, bool) {
 	s, ok := z.Map[key]
 	return s, ok
 }
+
+func (z *ZSetMapSlice) Remove(key string) bool {
+	s, found := z.Map[key]
+	if !found {
+		return false
+	}
+	i, _ := z.binSearch(&value{key, s})
+	z.vals = slices.Delete(z.vals, i, i+1)
+	delete(z.Map, key)
+	return true
+}

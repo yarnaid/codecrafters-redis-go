@@ -80,6 +80,24 @@ func (c *Coordinator) ZCard(key string) (int, error) {
 	return z.Count(), nil
 }
 
+func (c *Coordinator) ZRem(key, name string) (int, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	got, ok := c.backend.Get(key)
+	if !ok {
+		return -1, &NotFoundError{key}
+	}
+	z, ok := got.Value.(zset.ZSet)
+	if !ok {
+		return -1, &WrongTypeError{got.Value, zset.ZSetMapSlice{}}
+	}
+	if z.Remove(name) {
+		return 1, nil
+	}
+	return 0, nil
+}
+
 func (c *Coordinator) ZScore(key, name string) (float64, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()

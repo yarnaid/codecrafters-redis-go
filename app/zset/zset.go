@@ -10,7 +10,7 @@ type value struct {
 
 type ZSet interface {
 	Add(name string, score float64) bool
-	// Remove(string) int
+	Remove(string) bool
 	Score(string) (float64, bool)
 	Count() int
 	Range(int, int) iter.Seq[string]
