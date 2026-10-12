@@ -2,18 +2,14 @@ package zset
 
 import (
 	"cmp"
-	"log/slog"
 	"slices"
 )
 
 func compareVal(a, b *value) int {
-	v := cmp.Compare(a.score, b.score)
-	switch v {
-	case 0:
-		return cmp.Compare(a.name, b.name)
-	default:
-		return v
+	if c := cmp.Compare(a.score, b.score); c != 0 {
+		return c
 	}
+	return cmp.Compare(a.name, b.name)
 }
 
 type ZSetMapSlice struct {
@@ -31,16 +27,21 @@ func NewZSetMapSlice() *ZSetMapSlice {
 }
 
 func (z *ZSetMapSlice) Add(name string, s float64) bool {
-	if v, ok := z.Map[name]; ok && v == s {
+	old, exists := z.Map[name]
+	if exists && old == s {
 		return false
 	}
-	vv := &value{name, s}
-	idx, found := slices.BinarySearchFunc(z.vals, vv, compareVal)
-	if !found {
-		slog.Debug("found: %v, %v", name, z.vals)
-		z.vals = slices.Insert(z.vals, idx, vv)
-		z.Map[name] = s
-		return true
+	newVal := &value{name: name, score: s}
+	if exists {
+		i, _ := slices.BinarySearchFunc(z.vals, newVal, compareVal)
+		if i < len(z.vals) {
+			z.vals = slices.Delete(z.vals, i, i+1)
+		} else {
+			z.vals = z.vals[:len(z.vals)-1]
+		}
 	}
-	return false
+	i, _ := slices.BinarySearchFunc(z.vals, newVal, compareVal)
+	z.vals = slices.Insert(z.vals, i, newVal)
+	z.Map[name] = s
+	return !exists
 }

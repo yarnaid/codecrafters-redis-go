@@ -20,6 +20,8 @@ func TestCoordinator_ZAdd(t *testing.T) {
 	}{
 		{"1 new val", []val{{"a", 1}}, []int{1}},
 		{"1 new val+dup", []val{{"a", 1}, {"a", 1}}, []int{1, 0}},
+		{"2 new val+dup", []val{{"a", 1}, {"b", 2}, {"a", 1}}, []int{1, 1, 0}},
+		{"2 new val+upd", []val{{"a", 1}, {"b", 2}, {"a", 2}}, []int{1, 1, 0}},
 	}
 	key := "zset-key"
 
