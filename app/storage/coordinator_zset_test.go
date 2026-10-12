@@ -1,6 +1,9 @@
 package storage_test
 
 import (
+	"fmt"
+	"maps"
+	"slices"
 	"testing"
 
 	"my-redis/app/storage"
@@ -34,6 +37,38 @@ func TestCoordinator_ZAdd(t *testing.T) {
 				require.NoError(err)
 				require.Equal(tt.added[i], added)
 			}
+		})
+	}
+}
+
+func TestCoordinator_ZRange(t *testing.T) {
+	key := "zrange-key"
+	data := map[string]float64{
+		"0": 0, "1": 1, "2": 2, "3": 3, "4": 4,
+	}
+	keys := slices.Collect(maps.Keys(data))
+	c := storage.NewMemoryCoordinator(nil)
+	for k, v := range data {
+		if i, err := c.ZAdd(key, k, v); err != nil || i != 1 {
+			t.Fatal("cannot create zset", i, err)
+		}
+	}
+	tests := []struct {
+		start, end int
+		expected   []string
+	}{
+		{0, 4, keys},
+		{0, 10, keys},
+		{12, 10, []string{}},
+		{0, 2, keys[:3]},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("%d -> %d", tt.start, tt.end), func(t *testing.T) {
+			require := require.New(t)
+			actual, err := c.ZRange(key, tt.start, tt.end)
+			require.NoError(err)
+			require.EqualValues(tt.expected, actual)
 		})
 	}
 }

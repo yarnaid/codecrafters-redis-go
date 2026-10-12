@@ -2,6 +2,7 @@ package zset
 
 import (
 	"cmp"
+	"iter"
 	"slices"
 )
 
@@ -50,10 +51,25 @@ func (z *ZSetMapSlice) Add(name string, s float64) bool {
 	return !exists
 }
 
+func (z *ZSetMapSlice) Count() int {
+	return len(z.vals)
+}
+
 func (z *ZSetMapSlice) Rank(name string) (int, bool) {
 	score, found := z.Map[name]
 	if !found {
 		return -1, false
 	}
 	return z.binSearch(&value{name, score})
+}
+
+func (z *ZSetMapSlice) Range(start, end int) iter.Seq[string] {
+	return func(yield func(string) bool) {
+		res := z.vals[start:end]
+		for _, v := range res {
+			if !yield(v.name) {
+				return
+			}
+		}
+	}
 }

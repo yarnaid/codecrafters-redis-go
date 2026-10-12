@@ -1,6 +1,10 @@
 package storage
 
-import "my-redis/app/zset"
+import (
+	"slices"
+
+	"my-redis/app/zset"
+)
 
 func (c *Coordinator) ZAdd(key, name string, score float64) (int, error) {
 	c.mu.Lock()
@@ -39,4 +43,20 @@ func (c *Coordinator) ZRank(key, name string) (int, error) {
 		return -1, &NotFoundError{name}
 	}
 	return rank, nil
+}
+
+func (c *Coordinator) ZRange(key string, start, end int) ([]string, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	got, ok := c.backend.Get(key)
+	if !ok {
+		return []string{}, nil
+	}
+	z, ok := got.Value.(zset.ZSet)
+	if !ok {
+		return nil, &WrongTypeError{got.Value, zset.ZSetMapSlice{}}
+	}
+	start, end = max(start, 0), min(z.Count(), end+1)
+	return slices.Collect(z.Range(start, end)), nil
 }
