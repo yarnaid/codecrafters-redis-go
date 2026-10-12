@@ -22,4 +22,5 @@ words = [
     "lzf",
     "rdbfile",
     "replid",
+    "zset",
 ]
