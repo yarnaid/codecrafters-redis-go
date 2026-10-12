@@ -12,5 +12,5 @@ type ZSet interface {
 	// Score(string) float64
 	// Count() int
 	// Range(int, int) iter.Seq[value]
-	// Rank(string) int
+	Rank(string) (int, bool)
 }

@@ -26,6 +26,10 @@ func NewZSetMapSlice() *ZSetMapSlice {
 	}
 }
 
+func (z *ZSetMapSlice) binSearch(v *value) (int, bool) {
+	return slices.BinarySearchFunc(z.vals, v, compareVal)
+}
+
 func (z *ZSetMapSlice) Add(name string, s float64) bool {
 	old, exists := z.Map[name]
 	if exists && old == s {
@@ -33,15 +37,23 @@ func (z *ZSetMapSlice) Add(name string, s float64) bool {
 	}
 	newVal := &value{name: name, score: s}
 	if exists {
-		i, _ := slices.BinarySearchFunc(z.vals, newVal, compareVal)
+		i, _ := z.binSearch(newVal)
 		if i < len(z.vals) {
 			z.vals = slices.Delete(z.vals, i, i+1)
 		} else {
 			z.vals = z.vals[:len(z.vals)-1]
 		}
 	}
-	i, _ := slices.BinarySearchFunc(z.vals, newVal, compareVal)
+	i, _ := z.binSearch(newVal)
 	z.vals = slices.Insert(z.vals, i, newVal)
 	z.Map[name] = s
 	return !exists
+}
+
+func (z *ZSetMapSlice) Rank(name string) (int, bool) {
+	score, found := z.Map[name]
+	if !found {
+		return -1, false
+	}
+	return z.binSearch(&value{name, score})
 }

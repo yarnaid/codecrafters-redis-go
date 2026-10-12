@@ -41,3 +41,8 @@ type NotFoundError struct {
 func (n *NotFoundError) Error() string {
 	return fmt.Sprintf("key=%v not found", n.Key)
 }
+
+func (n *NotFoundError) Is(target error) bool {
+	_, ok := target.(*NotFoundError)
+	return ok
+}

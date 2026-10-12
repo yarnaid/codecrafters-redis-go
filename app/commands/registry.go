@@ -57,6 +57,7 @@ func DefaultRegistry() *Registry {
 		Spec{Name: "UNSUBSCRIBE", MinArgs: 1, MaxArgs: -1, Flags: FlagAllowedInSubs, Parse: parseUnsubscribe},
 		Spec{Name: "PUBLISH", MinArgs: 1, MaxArgs: -1, Flags: FlagAllowedInSubs, Parse: parsePublish},
 		Spec{Name: "ZADD", MinArgs: 3, MaxArgs: 3, Parse: parseZAdd},
+		Spec{Name: "ZRANK", MinArgs: 2, MaxArgs: 2, Parse: parseZRank},
 
 		Spec{Name: "COMMAND", MaxArgs: -1, Flags: FlagNotPropagate, Parse: parseCommand},
 	)
