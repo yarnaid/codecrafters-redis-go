@@ -64,3 +64,18 @@ func (c *Coordinator) ZRange(key string, start, end int) ([]string, error) {
 	start, end = invertIndex(start, l), invertIndex(end, l)
 	return slices.Collect(z.Range(start, end+1)), nil
 }
+
+func (c *Coordinator) ZCard(key string) (int, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	got, ok := c.backend.Get(key)
+	if !ok {
+		return -1, &NotFoundError{key}
+	}
+	z, ok := got.Value.(zset.ZSet)
+	if !ok {
+		return -1, &WrongTypeError{got.Value, zset.ZSetMapSlice{}}
+	}
+	return z.Count(), nil
+}
