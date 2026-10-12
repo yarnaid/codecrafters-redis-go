@@ -73,3 +73,8 @@ func (z *ZSetMapSlice) Range(start, end int) iter.Seq[string] {
 		}
 	}
 }
+
+func (z *ZSetMapSlice) Score(key string) (float64, bool) {
+	s, ok := z.Map[key]
+	return s, ok
+}

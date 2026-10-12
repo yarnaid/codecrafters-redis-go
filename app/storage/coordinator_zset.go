@@ -79,3 +79,22 @@ func (c *Coordinator) ZCard(key string) (int, error) {
 	}
 	return z.Count(), nil
 }
+
+func (c *Coordinator) ZScore(key, name string) (float64, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	got, ok := c.backend.Get(key)
+	if !ok {
+		return -1, &NotFoundError{key}
+	}
+	z, ok := got.Value.(zset.ZSet)
+	if !ok {
+		return -1, &WrongTypeError{got.Value, zset.ZSetMapSlice{}}
+	}
+	s, ok := z.Score(name)
+	if !ok {
+		return -1, &NotFoundError{name}
+	}
+	return s, nil
+}
