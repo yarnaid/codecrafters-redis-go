@@ -4,7 +4,7 @@ import (
 	"my-redis/app/parser"
 )
 
-func rangeList(list parser.Array[parser.Serializable], start, end int) parser.Array[parser.Serializable] {
+func rangeList[T ~[]E, E any](list T, start, end int) T {
 	l := len(list)
 	if end >= 0 {
 		end = min(l-1, end)

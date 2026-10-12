@@ -57,6 +57,7 @@ func (c *Coordinator) ZRange(key string, start, end int) ([]string, error) {
 	if !ok {
 		return nil, &WrongTypeError{got.Value, zset.ZSetMapSlice{}}
 	}
-	start, end = max(start, 0), min(z.Count(), end+1)
-	return slices.Collect(z.Range(start, end)), nil
+	l := z.Count()
+	start, end = invert_index(start, l), invert_index(end, l)
+	return slices.Collect(z.Range(start, end+1)), nil
 }

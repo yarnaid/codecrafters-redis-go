@@ -61,6 +61,9 @@ func TestCoordinator_ZRange(t *testing.T) {
 		{0, 10, keys},
 		{12, 10, []string{}},
 		{0, 2, keys[:3]},
+		{0, -2, keys[:4]},
+		{0, -1, keys[:5]},
+		{-4, -1, keys[1:5]},
 	}
 
 	for _, tt := range tests {
