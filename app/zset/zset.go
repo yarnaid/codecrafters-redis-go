@@ -7,7 +7,7 @@ type value struct {
 }
 
 type ZSet interface {
-	Add(name string, score float64)
+	Add(name string, score float64) bool
 	// Remove(string) int
 	// Score(string) float64
 	// Count() int

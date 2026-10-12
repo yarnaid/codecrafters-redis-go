@@ -2,6 +2,7 @@ package zset
 
 import (
 	"cmp"
+	"log/slog"
 	"slices"
 )
 
@@ -29,11 +30,17 @@ func NewZSetMapSlice() *ZSetMapSlice {
 	}
 }
 
-func (z *ZSetMapSlice) Add(name string, s float64) {
-	vv := &value{name, s}
-	z.Map[name] = s
-	idx, exists := slices.BinarySearchFunc(z.vals, vv, compareVal)
-	if !exists {
-		z.vals = slices.Insert(z.vals, idx, vv)
+func (z *ZSetMapSlice) Add(name string, s float64) bool {
+	if v, ok := z.Map[name]; ok && v == s {
+		return false
 	}
+	vv := &value{name, s}
+	idx, found := slices.BinarySearchFunc(z.vals, vv, compareVal)
+	if !found {
+		slog.Debug("found: %v, %v", name, z.vals)
+		z.vals = slices.Insert(z.vals, idx, vv)
+		z.Map[name] = s
+		return true
+	}
+	return false
 }

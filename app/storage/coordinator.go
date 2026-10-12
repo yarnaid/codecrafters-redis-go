@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"my-redis/app/parser"
-	"my-redis/app/zset"
 )
 
 type Coordinator struct {
@@ -146,17 +145,4 @@ func (c *Coordinator) getVersionsLocked(keys ...string) []int {
 
 func (c *Coordinator) Keys(pat string) []string {
 	return c.backend.Keys(pat)
-}
-
-func (c *Coordinator) ZAdd(key, name string, score float64) (int, error) {
-	v, ok := c.backend.Get(key)
-	if !ok {
-		v = Value{Value: zset.NewZSetMapSlice()}
-	}
-	z, ok := v.Value.(zset.ZSet)
-	if !ok {
-		return -1, &WrongTypeError{v.Value, zset.ZSetMapSlice{}}
-	}
-	z.Add(name, score)
-	return 1, nil
 }
