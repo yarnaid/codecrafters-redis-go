@@ -16,6 +16,7 @@ const (
 )
 
 type GeoAddCommand struct {
+	Key       string
 	Long, Lat float64
 	Name      string
 }
@@ -26,6 +27,7 @@ func (g *GeoAddCommand) Execute(ctx context.Context, env *Env, sess *Session) (p
 	if !g.validateCoord() {
 		return nil, fmt.Errorf("ERR invalid longitude,latitude pair %f,%f", g.Long, g.Lat)
 	}
+	env.Coordinator.ZAdd(g.Key, g.Name, 0)
 	return parser.Int(1), nil
 }
 
@@ -38,7 +40,7 @@ func parseGeoAdd(args []string) (Command, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &GeoAddCommand{long, lat, args[3]}, nil
+	return &GeoAddCommand{args[0], long, lat, args[3]}, nil
 }
 
 func (g *GeoAddCommand) validateCoord() bool {
