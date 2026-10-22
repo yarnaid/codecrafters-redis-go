@@ -10,11 +10,12 @@ const (
 	KindStream ValueKind = "stream"
 	KindNone   ValueKind = "none"
 	KindInt    ValueKind = "int"
+	KindBitMap ValueKind = "bitmap"
 )
 
 func (k ValueKind) IsValid() bool {
 	switch k {
-	case KindList, KindString, KindStream, KindNone:
+	case KindList, KindString, KindStream, KindNone, KindBitMap:
 		return true
 	}
 	return false

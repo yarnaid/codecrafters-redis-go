@@ -64,3 +64,11 @@ func (b *BitMap) String() string {
 	}
 	return builder.String()[:b.len]
 }
+
+func (b *BitMap) AsString() string {
+	bld := strings.Builder{}
+	for _, bt := range b.data {
+		bld.WriteRune(rune(bits.Reverse8(uint8(bt))))
+	}
+	return bld.String()
+}

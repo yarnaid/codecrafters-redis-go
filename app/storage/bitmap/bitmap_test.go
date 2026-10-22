@@ -100,3 +100,22 @@ func Test_bitMap_Set(t *testing.T) {
 		})
 	}
 }
+
+func TestBitMap_AsString(t *testing.T) {
+	tests := []struct {
+		data []byte
+		want string
+	}{
+		{[]byte{0b10}, "@"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.want, func(t *testing.T) {
+			require := require.New(t)
+			b := bitmap.NewBitMap()
+			b.SetData(tt.data)
+			b.SetLen(2)
+			got := b.AsString()
+			require.Equal(tt.want, got)
+		})
+	}
+}

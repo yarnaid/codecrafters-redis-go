@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"my-redis/app/parser"
+	"my-redis/app/storage/bitmap"
 )
 
 type Coordinator struct {
@@ -56,7 +57,12 @@ func (c *Coordinator) Get(key string) (interface{}, bool) {
 	defer c.mu.RUnlock()
 
 	val, _, err := c.getLocked(key)
-	return val, err
+	switch vv := val.(type) {
+	case *bitmap.BitMap:
+		return vv.AsString(), true
+	default:
+		return val, err
+	}
 }
 
 func (c *Coordinator) getLocked(key string) (interface{}, *time.Time, bool) {
