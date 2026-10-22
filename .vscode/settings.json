@@ -1,9 +1,15 @@
 {
     "cSpell.words": [
+        "BITOP",
         "blpop",
         "codecrafters",
+        "GETBIT",
+        "LLEN",
+        "LPOP",
         "LPUSH",
         "LRANGE",
+        "PSYNC",
+        "REPLCONF",
         "replicaof",
         "RPUSH",
         "sess",
@@ -12,6 +18,12 @@
         "Strg",
         "Unwatch",
         "XRANGE",
-        "XREAD"
+        "XREAD",
+        "ZADD",
+        "ZCARD",
+        "ZRANGE",
+        "ZRANK",
+        "ZREM",
+        "ZSCORE"
     ]
 }

@@ -66,6 +66,7 @@ func DefaultRegistry() *Registry {
 		Spec{Name: "GETBIT", MinArgs: 2, MaxArgs: 2, Parse: parseGetBit},
 		Spec{Name: "STRLEN", MinArgs: 1, MaxArgs: 1, Parse: parseStrLen},
 		Spec{Name: "BITCOUNT", MinArgs: 1, MaxArgs: 3, Parse: parseBitCount},
+		Spec{Name: "BITOP", MinArgs: 4, MaxArgs: 4, Parse: parseBitOp},
 
 		Spec{Name: "COMMAND", MaxArgs: -1, Flags: FlagNotPropagate, Parse: parseCommand},
 	)

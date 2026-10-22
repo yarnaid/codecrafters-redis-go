@@ -1,6 +1,9 @@
 package storage
 
 import (
+	"fmt"
+	"strings"
+
 	"my-redis/app/storage/bitmap"
 )
 
@@ -8,21 +11,10 @@ func (c *Coordinator) GetBit(key string, offset int) (int, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	val, ok := c.backend.Get(key)
-	if !ok {
-		return 0, nil
+	b, err := c.getBitMapLocked(key)
+	if err != nil {
+		return 0, err
 	}
-
-	var b *bitmap.BitMap
-	switch v := val.Value.(type) {
-	case *bitmap.BitMap:
-		b = v
-	case string:
-		b = bitmap.FromString(v)
-	default:
-		return -1, &WrongTypeError{b, &bitmap.BitMap{}}
-	}
-
 	return b.Bit(offset), nil
 }
 
@@ -54,17 +46,48 @@ func (c *Coordinator) BitCount(key string, start, end int) (int, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	v, ok := c.backend.Get(key)
-	if !ok {
-		// slog.Debug("[Coordinator][bitcount] not found", "key", key)
+	b, err := c.getBitMapLocked(key)
+	if err != nil {
 		return 0, false
 	}
+	return b.BitCount(start, end), true
+}
+
+func (c *Coordinator) getBitMapLocked(key string) (*bitmap.BitMap, error) {
+	v, ok := c.backend.Get(key)
+	if !ok {
+		return nil, fmt.Errorf("not found")
+	}
+	var b *bitmap.BitMap
 	switch vv := v.Value.(type) {
 	case *bitmap.BitMap:
-		return vv.BitCount(start, end), true
+		b = vv
 	case string:
-		return bitmap.FromString(vv).BitCount(start, end), true
+		b = bitmap.FromString(vv)
+	default:
+		return nil, fmt.Errorf("invalid type for bitmap")
 	}
-	// slog.Debug("[Coordinator] wrong type", "key", key, "v", v.Value, "type", fmt.Sprintf("%t", v.Value))
-	return 0, false
+	return b, nil
+}
+
+func (c *Coordinator) BitOp(op, dest string, k1, k2 string) (int, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	b1, err := c.getBitMapLocked(k1)
+	if err != nil {
+		return 0, err
+	}
+	b2, err := c.getBitMapLocked(k2)
+	if err != nil {
+		return 0, err
+	}
+	switch strings.ToUpper(op) {
+	case "AND":
+		res := bitmap.And(b1, b2)
+		c.backend.Set(dest, &Value{Value: res})
+		return res.DataLen(), nil
+	default:
+		return 0, fmt.Errorf("not implemented op for bitmap %s", op)
+	}
 }
