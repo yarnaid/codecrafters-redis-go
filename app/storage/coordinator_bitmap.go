@@ -74,13 +74,13 @@ func (c *Coordinator) BitOp(op, dest string, k1, k2 string) (int, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	b1, err := c.getBitMapLocked(k1)
-	if err != nil {
-		return 0, err
+	b1, _ := c.getBitMapLocked(k1)
+	if b1 == nil {
+		b1 = bitmap.NewBitMap()
 	}
-	b2, err := c.getBitMapLocked(k2)
-	if err != nil {
-		return 0, err
+	b2, _ := c.getBitMapLocked(k2)
+	if b2 == nil {
+		b2 = bitmap.NewBitMap()
 	}
 	switch strings.ToUpper(op) {
 	case "AND":
