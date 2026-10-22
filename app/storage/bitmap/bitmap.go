@@ -76,3 +76,24 @@ func (b *BitMap) AsString() string {
 func (b *BitMap) DataLen() int {
 	return len(b.data)
 }
+
+func (b *BitMap) BitCount(start, end int) int {
+	// slog.Debug("[bitmap][bitcount]", "start", start, "end", end, "data", b.data, "s", b.String())
+	if end < 0 {
+		end = len(b.data) - 1
+	}
+	if start > len(b.data) {
+		return 0
+	}
+	if end < start {
+		return 0
+	}
+	end = min(end, len(b.data)-1)
+	var res int
+	for _, bt := range b.data[start : end+1] {
+		// slog.Debug("[bitcount]", "res", res)
+		res += bits.OnesCount8(bt)
+	}
+	// slog.Debug("[bitcount] final", "res", res)
+	return res
+}

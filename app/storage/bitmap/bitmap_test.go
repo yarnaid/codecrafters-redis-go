@@ -119,3 +119,27 @@ func TestBitMap_AsString(t *testing.T) {
 		})
 	}
 }
+
+func TestBitMap_BitCount(t *testing.T) {
+	tests := []struct {
+		name  string // description of this test case
+		data  []byte
+		start int
+		end   int
+		want  int
+	}{
+		{"1", []byte{0b1}, 0, -1, 1},
+		{"2", []byte{0b11}, 0, -1, 2},
+		{"0", []byte{0b11, 0}, 1, -1, 0},
+		{"1 in range", []byte{0b11, 0b1, 0}, 1, 1, 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			b := bitmap.NewBitMap()
+			b.SetData(tt.data)
+			got := b.BitCount(tt.start, tt.end)
+			require.Equal(tt.want, got)
+		})
+	}
+}

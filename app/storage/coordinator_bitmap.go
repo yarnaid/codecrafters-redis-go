@@ -1,6 +1,8 @@
 package storage
 
-import "my-redis/app/storage/bitmap"
+import (
+	"my-redis/app/storage/bitmap"
+)
 
 func (c *Coordinator) GetBit(key string, offset int) (int, error) {
 	c.mu.Lock()
@@ -46,4 +48,23 @@ func (c *Coordinator) SetBit(key string, offset int, zero bool) (int, error) {
 	}
 
 	return old, nil
+}
+
+func (c *Coordinator) BitCount(key string, start, end int) (int, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	v, ok := c.backend.Get(key)
+	if !ok {
+		// slog.Debug("[Coordinator][bitcount] not found", "key", key)
+		return 0, false
+	}
+	switch vv := v.Value.(type) {
+	case *bitmap.BitMap:
+		return vv.BitCount(start, end), true
+	case string:
+		return bitmap.FromString(vv).BitCount(start, end), true
+	}
+	// slog.Debug("[Coordinator] wrong type", "key", key, "v", v.Value, "type", fmt.Sprintf("%t", v.Value))
+	return 0, false
 }
