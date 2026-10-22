@@ -2,7 +2,6 @@ package commands
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"my-redis/app/geo"
@@ -22,11 +21,8 @@ func (g *GeoPosCommand) Execute(ctx context.Context, env *Env, sess *Session) (p
 
 		score, err := env.Coordinator.ZScore(g.Key, name)
 		if err != nil {
-			if errors.Is(err, &NotFoundError{}) {
-				res[i] = parser.NullArray(0)
-				continue
-			}
-			return nil, err
+			res[i] = parser.NullArray(0)
+			continue
 		}
 		loc := geo.NewLoc(0, 0, uint64(score))
 		lat, lon := loc.Coord()
