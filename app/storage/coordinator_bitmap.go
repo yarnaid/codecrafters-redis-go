@@ -82,12 +82,16 @@ func (c *Coordinator) BitOp(op, dest string, k1, k2 string) (int, error) {
 	if b2 == nil {
 		b2 = bitmap.NewBitMap()
 	}
+	var opF func(*bitmap.BitMap, *bitmap.BitMap) *bitmap.BitMap
 	switch strings.ToUpper(op) {
 	case "AND":
-		res := bitmap.And(b1, b2)
-		c.backend.Set(dest, &Value{Value: res})
-		return res.DataLen(), nil
+		opF = bitmap.And
+	case "OR":
+		opF = bitmap.Or
 	default:
 		return 0, fmt.Errorf("not implemented op for bitmap %s", op)
 	}
+	res := opF(b1, b2)
+	c.backend.Set(dest, &Value{Value: res})
+	return res.DataLen(), nil
 }

@@ -25,3 +25,8 @@ func And(b1, b2 *BitMap) *BitMap {
 	f := func(a, b byte) byte { return a & b }
 	return applyOp(b1, b2, f)
 }
+
+func Or(b1, b2 *BitMap) *BitMap {
+	f := func(a, b byte) byte { return a | b }
+	return applyOp(b1, b2, f)
+}
