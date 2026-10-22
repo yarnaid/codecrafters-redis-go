@@ -3,6 +3,7 @@
         "BITOP",
         "blpop",
         "codecrafters",
+        "GEOADD",
         "GETBIT",
         "LLEN",
         "LPOP",
