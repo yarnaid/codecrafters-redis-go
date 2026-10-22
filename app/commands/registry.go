@@ -68,6 +68,7 @@ func DefaultRegistry() *Registry {
 		Spec{Name: "BITCOUNT", MinArgs: 1, MaxArgs: 3, Parse: parseBitCount},
 		Spec{Name: "BITOP", MinArgs: 4, MaxArgs: 4, Parse: parseBitOp},
 		Spec{Name: "GEOADD", MinArgs: 4, MaxArgs: 4, Parse: parseGeoAdd},
+		Spec{Name: "GEOPOS", MinArgs: 2, MaxArgs: -1, Parse: parseGeoPos},
 
 		Spec{Name: "COMMAND", MaxArgs: -1, Flags: FlagNotPropagate, Parse: parseCommand},
 	)
