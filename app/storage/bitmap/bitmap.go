@@ -72,3 +72,7 @@ func (b *BitMap) AsString() string {
 	}
 	return bld.String()
 }
+
+func (b *BitMap) DataLen() int {
+	return len(b.data)
+}

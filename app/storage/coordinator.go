@@ -153,3 +153,21 @@ func (c *Coordinator) getVersionsLocked(keys ...string) []int {
 func (c *Coordinator) Keys(pat string) []string {
 	return c.backend.Keys(pat)
 }
+
+func (c *Coordinator) StrLen(key string) (int, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	v, ok := c.backend.Get(key)
+	if !ok {
+		return 0, false
+	}
+
+	switch vv := v.Value.(type) {
+	case *string:
+		return len(*vv), true
+	case *bitmap.BitMap:
+		return vv.DataLen(), true
+	}
+	return -1, false
+}
