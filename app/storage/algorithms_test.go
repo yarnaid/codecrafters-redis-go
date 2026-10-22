@@ -62,9 +62,9 @@ func TestPopList(t *testing.T) {
 		list[i] = parser.Int(i)
 	}
 	tests := []struct {
-		n               int
-		expected_popped []parser.Serializable
-		expected_tail   []parser.Serializable
+		n              int
+		expectedPopped []parser.Serializable
+		expectedTail   []parser.Serializable
 	}{
 		{1, list[:1], list[1:]},
 		{2, list[:2], list[2:]},
@@ -73,8 +73,8 @@ func TestPopList(t *testing.T) {
 		t.Run(fmt.Sprintf("pop %d", tt.n), func(t *testing.T) {
 			require := require.New(t)
 			popped, remaining := popListLeft(list, tt.n)
-			require.EqualValues(tt.expected_popped, popped)
-			require.EqualValues(tt.expected_tail, remaining)
+			require.EqualValues(tt.expectedPopped, popped)
+			require.EqualValues(tt.expectedTail, remaining)
 		})
 	}
 }

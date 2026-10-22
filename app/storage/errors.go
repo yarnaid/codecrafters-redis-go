@@ -9,25 +9,25 @@ type TimeoutError struct {
 	Key      string
 	At       time.Time
 	Duration time.Duration
-	StreamId *StreamId
+	StreamID *StreamID
 }
 
 func (t *TimeoutError) Error() string {
-	return fmt.Sprintf("timeout error: key=%v, at=%v, duration=%v, stream_id=%v", t.Key, t.At, t.Duration, deref(t.StreamId))
+	return fmt.Sprintf("timeout error: key=%v, at=%v, duration=%v, stream_id=%v", t.Key, t.At, t.Duration, deref(t.StreamID))
 }
 
-func NewTimeoutError(key string, duration time.Duration, streamId *StreamId) *TimeoutError {
+func NewTimeoutError(key string, duration time.Duration, streamID *StreamID) *TimeoutError {
 	return &TimeoutError{
 		Key:      key,
 		At:       time.Now(),
 		Duration: duration,
-		StreamId: streamId,
+		StreamID: streamID,
 	}
 }
 
 type WrongTypeError struct {
-	Got      interface{}
-	Required interface{}
+	Got      any
+	Required any
 }
 
 func (w *WrongTypeError) Error() string {

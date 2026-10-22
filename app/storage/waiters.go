@@ -14,13 +14,13 @@ type waiterArray struct {
 type waiterStream struct {
 	ch      chan StreamContainer
 	elem    *list.Element
-	StartId StreamId
+	StartID StreamID
 }
 
 func NewWaiterArray() waiterArray {
 	return waiterArray{ch: make(chan parser.Serializable, 1)}
 }
 
-func NewWaiterStream(startId StreamId) waiterStream {
-	return waiterStream{ch: make(chan StreamContainer, 1), StartId: startId}
+func NewWaiterStream(startID StreamID) waiterStream {
+	return waiterStream{ch: make(chan StreamContainer, 1), StartID: startID}
 }

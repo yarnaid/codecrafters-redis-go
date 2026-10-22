@@ -22,8 +22,8 @@ func (c *Coordinator) Backend() Backend {
 	return c.backend
 }
 
-func EntriesAfter(stream []*StreamContainer, startId StreamId) []*StreamContainer {
-	return entriesAfter(stream, startId)
+func EntriesAfter(stream []*StreamContainer, startID StreamID) []*StreamContainer {
+	return entriesAfter(stream, startID)
 }
 
 func PointersToValues(values []*StreamContainer) []StreamContainer {

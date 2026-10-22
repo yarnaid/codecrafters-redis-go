@@ -9,7 +9,7 @@ type NotFoundError struct {
 var _ error = (*NotFoundError)(nil)
 
 func (n *NotFoundError) Error() string {
-	return fmt.Sprint("key not found `%s`", n.key)
+	return fmt.Sprintf("key not found `%s`", n.key)
 }
 
 func notFoundErrorf(key string) error {

@@ -18,21 +18,17 @@ type MemoryStorage struct {
 
 func NewMemoryStorage() *MemoryStorage {
 	panic("this memory storage is deprecated!")
-	res := MemoryStorage{
-		data: make(map[string]*Value),
-	}
-	return &res
 }
 
-func (s *MemoryStorage) Set(key string, value interface{}, ttl_ms int) bool {
+func (s *MemoryStorage) Set(key string, value any, ttlMs int) bool {
 	s.mu.Lock()
 	defer func() {
 		s.mu.Unlock()
 	}()
-	slog.Debug("storage set", "key", key, "value", value, "ttl", ttl_ms)
+	slog.Debug("storage set", "key", key, "value", value, "ttl", ttlMs)
 	val := Value{Value: value}
-	if ttl_ms > 0 {
-		val.ExpireAt = time.Now().Add(time.Duration(ttl_ms) * time.Millisecond)
+	if ttlMs > 0 {
+		val.ExpireAt = time.Now().Add(time.Duration(ttlMs) * time.Millisecond)
 	}
 	s.data[key] = &val
 	return true
@@ -57,7 +53,7 @@ func (s *MemoryStorage) Get(key string) (interface{}, bool) {
 	return val.Value, true
 }
 
-func (s *MemoryStorage) Append(key string, values ...interface{}) int {
+func (s *MemoryStorage) Append(key string, values ...any) int {
 	s.mu.Lock()
 	defer func() {
 		s.mu.Unlock()
@@ -67,20 +63,20 @@ func (s *MemoryStorage) Append(key string, values ...interface{}) int {
 	if !ok {
 		slog.Debug("[Storage][Append] no array, creating", "key", key)
 		// slog.Debug("[Storage][Append] current data", "data", s.data)
-		val = &Value{Value: make([]interface{}, 0)}
+		val = &Value{Value: make([]any, 0)}
 		s.data[key] = val
 	}
-	arr, ok := val.Value.([]interface{})
+	arr, ok := val.Value.([]any)
 	if !ok {
 		return 0
 	}
 	val.Value = append(arr, values...)
-	res_arr, _ := val.Value.([]interface{})
+	resArr, _ := val.Value.([]any)
 	// slog.Debug("[Storage][Append] len", "len", len(res_arr), "val", res_arr)
-	return len(res_arr)
+	return len(resArr)
 }
 
-func (s *MemoryStorage) Prepend(key string, values ...interface{}) int {
+func (s *MemoryStorage) Prepend(key string, values ...any) int {
 	s.mu.Lock()
 	defer func() {
 		s.mu.Unlock()
@@ -90,17 +86,17 @@ func (s *MemoryStorage) Prepend(key string, values ...interface{}) int {
 	if !ok {
 		slog.Debug("[Storage][Append] no array, creating", "key", key)
 		// slog.Debug("[Storage][Append] current data", "data", s.data)
-		val = &Value{Value: make([]interface{}, 0)}
+		val = &Value{Value: make([]any, 0)}
 		s.data[key] = val
 	}
-	arr, ok := val.Value.([]interface{})
+	arr, ok := val.Value.([]any)
 	if !ok {
 		return 0
 	}
 	val.Value = PrependReversed(arr, values...)
-	res_arr, _ := val.Value.([]interface{})
+	resArr, _ := val.Value.([]any)
 	// slog.Debug("[Storage][Append] len", "len", len(res_arr), "val", res_arr)
-	return len(res_arr)
+	return len(resArr)
 }
 
 func (s *MemoryStorage) LRange(key string, start, end int) parser.Array[parser.Serializable] {

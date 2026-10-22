@@ -13,13 +13,13 @@ type MemoryBackend struct {
 var _ Backend = (*MemoryBackend)(nil)
 
 func NewMemoryBackend(data map[string]*Value) *MemoryBackend {
-	var data_set map[string]*Value
+	var dataSet map[string]*Value
 	if data != nil {
-		data_set = data
+		dataSet = data
 	} else {
-		data_set = make(map[string]*Value)
+		dataSet = make(map[string]*Value)
 	}
-	return &MemoryBackend{data: data_set}
+	return &MemoryBackend{data: dataSet}
 }
 
 func (m *MemoryBackend) Get(key string) (Value, bool) {

@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -11,11 +12,11 @@ import (
 	"my-redis/app/parser"
 )
 
-type StreamId struct {
+type StreamID struct {
 	Time, Seq int
 }
 
-func (s *StreamId) String() string {
+func (s *StreamID) String() string {
 	if s.Time < 0 {
 		return "*"
 	}
@@ -25,26 +26,26 @@ func (s *StreamId) String() string {
 	return fmt.Sprintf("%d-%d", s.Time, s.Seq)
 }
 
-type InvalidStreamIdSeq struct {
-	Id1, Id2 *StreamId
+type InvalidStreamIDSeq struct {
+	ID1, ID2 *StreamID
 }
 
-type ZeroStreamId struct{}
+type ZeroStreamID struct{}
 
 var (
-	_ error = (*InvalidStreamIdSeq)(nil)
-	_ error = (*ZeroStreamId)(nil)
+	_ error = (*InvalidStreamIDSeq)(nil)
+	_ error = (*ZeroStreamID)(nil)
 )
 
-func (z ZeroStreamId) Error() string {
+func (z ZeroStreamID) Error() string {
 	return "stream id must not be 0-0"
 }
 
-func (i InvalidStreamIdSeq) Error() string {
-	return fmt.Sprintf("wrong streamId seq: %v -> %v", *i.Id1, *i.Id2)
+func (i InvalidStreamIDSeq) Error() string {
+	return fmt.Sprintf("wrong streamId seq: %v -> %v", *i.ID1, *i.ID2)
 }
 
-func StreamIdGreaterOrGen(id1, id2 *StreamId, eq bool) bool {
+func StreamIDGreaterOrGen(id1, id2 *StreamID, eq bool) bool {
 	if id2.Time < 0 {
 		id2.Time = int(time.Now().UnixMilli())
 		if id2.Time == id1.Time {
@@ -79,7 +80,7 @@ func StreamIdGreaterOrGen(id1, id2 *StreamId, eq bool) bool {
 	}
 }
 
-func (s *StreamId) IsZero() bool {
+func (s *StreamID) IsZero() bool {
 	if s.Time == 0 && s.Seq == 0 {
 		return true
 	}
@@ -92,19 +93,19 @@ type StreamValue struct {
 }
 
 type StreamContainer struct {
-	Id     StreamId
+	ID     StreamID
 	Values []StreamValue
 }
 
 func (s *StreamContainer) GreaterOrGen(other *StreamContainer, eq bool) bool {
-	return StreamIdGreaterOrGen(&s.Id, &other.Id, eq)
+	return StreamIDGreaterOrGen(&s.ID, &other.ID, eq)
 }
 
 var _ parser.Serializable = (*StreamContainer)(nil)
 
 func (s *StreamContainer) Serialize() ([]byte, error) {
 	res := make(parser.Array[parser.Serializable], len(s.Values)+1)
-	res[0] = parser.BulkString(s.Id.String())
+	res[0] = parser.BulkString(s.ID.String())
 	for i, v := range s.Values {
 		res[i+1] = parser.Array[parser.Serializable]{parser.BulkString(v.K), parser.BulkString(v.V)}
 	}
@@ -115,86 +116,85 @@ func NewStreamContainer() *StreamContainer {
 	return &StreamContainer{Values: make([]StreamValue, 0)}
 }
 
-func ParseStreamId(id string) (StreamId, error) {
+func ParseStreamID(id string) (StreamID, error) {
 	timeS, seqS, found := strings.Cut(id, "-")
 	if !found {
 
 		switch id {
 		case "*", "$":
-			return StreamId{-1, -1}, nil
+			return StreamID{-1, -1}, nil
 		}
-		return StreamId{}, fmt.Errorf("`-` not found in stream id: %q", id)
+		return StreamID{}, fmt.Errorf("`-` not found in stream id: %q", id)
 	}
 	time, err := strconv.Atoi(timeS)
 	if err != nil {
-		return StreamId{}, err
+		return StreamID{}, err
 	}
 	seq, err := strconv.Atoi(seqS)
 	if err != nil {
 		if seqS == "*" {
-			return StreamId{time, -1}, nil
+			return StreamID{time, -1}, nil
 		}
-		return StreamId{}, err
+		return StreamID{}, err
 	}
 	if seq == 0 && time == 0 {
-		return StreamId{}, ZeroStreamId{}
+		return StreamID{}, ZeroStreamID{}
 	}
-	return StreamId{time, seq}, nil
+	return StreamID{time, seq}, nil
 }
 
-func ParseRangeId(id string) (StreamId, error) {
+func ParseRangeID(id string) (StreamID, error) {
 	if !strings.Contains(id, "-") {
 		time, err := strconv.Atoi(id)
 		if err != nil {
-			return StreamId{}, err
+			return StreamID{}, err
 		}
-		return StreamId{time, 0}, nil
+		return StreamID{time, 0}, nil
 	}
 	timeS, seqS, _ := strings.Cut(id, "-")
 	time, err := strconv.Atoi(timeS)
 	if err != nil {
-		return StreamId{}, err
+		return StreamID{}, err
 	}
 	seq, err := strconv.Atoi(seqS)
 	if err != nil {
-		return StreamId{}, err
+		return StreamID{}, err
 	}
-	return StreamId{time, seq}, nil
+	return StreamID{time, seq}, nil
 }
 
-func StreamRange(streams []*StreamContainer, startId, endId string) ([]*StreamContainer, error) {
-	var start, end StreamId
+func StreamRange(streams []*StreamContainer, startID, endID string) ([]*StreamContainer, error) {
+	var start, end StreamID
 	var err error
 	var startRes, endRes int
-	if startId == "-" {
+	if startID == "-" {
 		startRes = 0
 	} else {
-		start, err = ParseRangeId(startId)
+		start, err = ParseRangeID(startID)
 		if err != nil {
 			return nil, err
 		}
 		startRes = getStreamStart(start, streams)
 	}
-	if endId == "+" {
+	if endID == "+" {
 		endRes = len(streams) - 1
 	} else {
-		end, err = ParseRangeId(endId)
+		end, err = ParseRangeID(endID)
 		if err != nil {
 			return nil, err
 		}
 		endRes = getStreamEnd(end, streams)
 	}
-	slog.Debug("[StreamRange]", "startId", startId, "endId", endId, "startRes", startRes, "endRes", endRes)
+	slog.Debug("[StreamRange]", "startId", startID, "endId", endID, "startRes", startRes, "endRes", endRes)
 	if startRes < 0 || endRes < 0 {
 		return []*StreamContainer{}, nil
 	}
 	return streams[startRes : endRes+1], nil
 }
 
-func getStreamEnd(end StreamId, streams []*StreamContainer) int {
-	endContainer := StreamContainer{Id: end}
-	for i := len(streams) - 1; i >= 0; i-- {
-		s := streams[i]
+func getStreamEnd(end StreamID, streams []*StreamContainer) int {
+	endContainer := StreamContainer{ID: end}
+	for i, s := range slices.Backward(streams) {
 		if endContainer.GreaterOrGen(s, true) {
 			return i
 		}
@@ -202,8 +202,8 @@ func getStreamEnd(end StreamId, streams []*StreamContainer) int {
 	return 0
 }
 
-func getStreamStart(start StreamId, streams []*StreamContainer) int {
-	startContainer := StreamContainer{Id: start}
+func getStreamStart(start StreamID, streams []*StreamContainer) int {
+	startContainer := StreamContainer{ID: start}
 	for i, s := range streams {
 		if s.GreaterOrGen(&startContainer, false) {
 			return max(0, i-1)
@@ -212,14 +212,14 @@ func getStreamStart(start StreamId, streams []*StreamContainer) int {
 	return len(streams) - 1
 }
 
-func entriesAfter(stream []*StreamContainer, startId StreamId) []*StreamContainer {
+func entriesAfter(stream []*StreamContainer, startID StreamID) []*StreamContainer {
 	if len(stream) < 1 {
 		return stream
 	}
-	start := getStreamStart(startId, stream)
-	firstId := stream[0].Id
+	start := getStreamStart(startID, stream)
+	firstID := stream[0].ID
 	var first int
-	if !StreamIdGreaterOrGen(&firstId, &startId, false) {
+	if !StreamIDGreaterOrGen(&firstID, &startID, false) {
 		first = 1
 	}
 	return stream[start+first:]

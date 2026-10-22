@@ -1,3 +1,4 @@
+// Package storage ...
 package storage
 
 import (
@@ -32,40 +33,40 @@ func NewMemoryCoordinator(memory *MemoryBackend) *Coordinator {
 	}
 }
 
-func (s *Coordinator) Set(key string, value interface{}, ttl time.Duration, kind ValueKind) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (c *Coordinator) Set(key string, value interface{}, ttl time.Duration, kind ValueKind) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	return s.setLocked(key, value, ttl, kind)
+	return c.setLocked(key, value, ttl, kind)
 }
 
-func (s *Coordinator) setLocked(key string, value interface{}, ttl time.Duration, kind ValueKind) bool {
-	version := s.getVersionsLocked(key)[0]
+func (c *Coordinator) setLocked(key string, value interface{}, ttl time.Duration, kind ValueKind) bool {
+	version := c.getVersionsLocked(key)[0]
 	val := Value{Value: value, Kind: kind, Version: max(version+1, 1)}
 	if ttl > 0 {
 		val.ExpireAt = time.Now().Add(ttl)
 	}
-	s.backend.Set(key, &val)
+	c.backend.Set(key, &val)
 	return true
 }
 
-func (s *Coordinator) Get(key string) (interface{}, bool) {
+func (c *Coordinator) Get(key string) (interface{}, bool) {
 	// slog.Debug("[Coordinator][GET]", "key", key)
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
-	val, _, err := s.getLocked(key)
+	val, _, err := c.getLocked(key)
 	return val, err
 }
 
-func (s *Coordinator) getLocked(key string) (interface{}, *time.Time, bool) {
-	val, ok := s.backend.Get(key)
+func (c *Coordinator) getLocked(key string) (interface{}, *time.Time, bool) {
+	val, ok := c.backend.Get(key)
 	if !ok {
 		return nil, nil, ok
 	}
 	if val.IsExpired() {
 		slog.Debug("[Coordinator][GET] expired", "ago", time.Since(val.ExpireAt))
-		s.backend.Delete(key)
+		c.backend.Delete(key)
 		return nil, nil, false
 	}
 	return val.Value, &val.ExpireAt, true
@@ -88,15 +89,15 @@ func (c *Coordinator) Type(key string) (ValueKind, error) {
 func (c *Coordinator) Incr(key string) (parser.Int, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	val, expire_at, ok := c.getLocked(key)
+	val, expireAt, ok := c.getLocked(key)
 	if !ok {
 		val = int(0)
 	}
-	var val_int int
+	var valInt int
 	switch v := val.(type) {
 	case string:
 		var err error
-		val_int, err = strconv.Atoi(v)
+		valInt, err = strconv.Atoi(v)
 		if err != nil {
 			switch err.(type) {
 			case *strconv.NumError:
@@ -106,22 +107,22 @@ func (c *Coordinator) Incr(key string) (parser.Int, error) {
 			}
 		}
 	case int:
-		val_int = v
+		valInt = v
 	default:
 		return 0, &WrongTypeError{Got: val, Required: ""}
 	}
-	val_int++
+	valInt++
 	var ttl time.Duration
-	if expire_at != nil {
-		ttl = time.Until(*expire_at)
+	if expireAt != nil {
+		ttl = time.Until(*expireAt)
 	} else {
 		ttl = 0
 	}
-	ok = c.setLocked(key, val_int, ttl, KindInt)
+	ok = c.setLocked(key, valInt, ttl, KindInt)
 	if !ok {
-		return 0, fmt.Errorf("cannot set value=%d for key=%v", val_int, key)
+		return 0, fmt.Errorf("cannot set value=%d for key=%v", valInt, key)
 	}
-	return parser.Int(val_int), nil
+	return parser.Int(valInt), nil
 }
 
 func (c *Coordinator) GetVersions(keys ...string) []int {

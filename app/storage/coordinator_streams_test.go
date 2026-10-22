@@ -34,7 +34,7 @@ func TestCoordinator_Xadd(t *testing.T) {
 	nowMs := int(time.Now().UnixMilli())
 	id, err = c.Xadd(key, "*")
 	require.Nil(err)
-	streamId, err := storage.ParseStreamId(id)
+	streamId, err := storage.ParseStreamID(id)
 	require.Nil(err)
 	require.GreaterOrEqual(streamId.Time, nowMs)
 	require.Equal(0, streamId.Seq)
@@ -47,7 +47,7 @@ func TestCoordinator_Xadd(t *testing.T) {
 	key = "-2"
 	id, err = c.Xadd(key, "*")
 	require.Nil(err)
-	streamId, err = storage.ParseStreamId(id)
+	streamId, err = storage.ParseStreamID(id)
 	require.Nil(err)
 	require.GreaterOrEqual(streamId.Time, nowMs)
 	require.Equal(0, streamId.Seq)
@@ -55,17 +55,17 @@ func TestCoordinator_Xadd(t *testing.T) {
 
 func TestXReadStreams(t *testing.T) {
 	data := []*storage.StreamContainer{
-		{Id: storage.StreamId{0, 1}, Values: make([]storage.StreamValue, 0)},
-		{Id: storage.StreamId{0, 2}, Values: make([]storage.StreamValue, 0)},
-		{Id: storage.StreamId{0, 3}, Values: make([]storage.StreamValue, 0)},
+		{ID: storage.StreamID{0, 1}, Values: make([]storage.StreamValue, 0)},
+		{ID: storage.StreamID{0, 2}, Values: make([]storage.StreamValue, 0)},
+		{ID: storage.StreamID{0, 3}, Values: make([]storage.StreamValue, 0)},
 	}
 	tests := []struct {
-		startId  storage.StreamId
+		startId  storage.StreamID
 		expected []*storage.StreamContainer
 	}{
-		{storage.StreamId{0, 0}, data[:]},
-		{storage.StreamId{0, 1}, data[1:]},
-		{storage.StreamId{0, 2}, data[2:]},
+		{storage.StreamID{0, 0}, data[:]},
+		{storage.StreamID{0, 1}, data[1:]},
+		{storage.StreamID{0, 2}, data[2:]},
 	}
 	key := "xread-stream-key"
 	for _, tt := range tests {
@@ -74,7 +74,7 @@ func TestXReadStreams(t *testing.T) {
 			require := require.New(t)
 
 			for _, v := range data {
-				_, err := c.Xadd(key, v.Id.String())
+				_, err := c.Xadd(key, v.ID.String())
 				require.Nil(err)
 			}
 			res, err := c.XReadStreams(key, tt.startId.String(), nil)
@@ -88,7 +88,7 @@ func TestXReadBlockStream(t *testing.T) {
 	slog.Debug("Start testing `xread block streams`")
 	c := storage.NewMemoryCoordinator(nil)
 	key := "xread-bl-stream"
-	id := storage.StreamId{1, 1}
+	id := storage.StreamID{1, 1}
 
 	type result struct {
 		response []*storage.StreamContainer
@@ -113,7 +113,7 @@ func TestXReadBlockStream(t *testing.T) {
 		first := startClient(1, id.String())
 		second := startClient(2, id.String()) // guaranteed to be queued after first
 
-		newId := storage.StreamId{2, 2}
+		newId := storage.StreamID{2, 2}
 		_, err := c.Xadd(key, newId.String())
 		require.Nil(err)
 
@@ -121,11 +121,11 @@ func TestXReadBlockStream(t *testing.T) {
 		case res := <-first:
 			require.Nil(res.err)
 			require.Len(res.response, 1)
-			require.Equal(newId, res.response[0].Id)
+			require.Equal(newId, res.response[0].ID)
 		case res := <-second:
 			require.Nil(res.err)
 			require.Len(res.response, 1)
-			require.Equal(newId, res.response[0].Id)
+			require.Equal(newId, res.response[0].ID)
 		case <-time.After(10 * time.Millisecond):
 			require.Fail("client1 didn't receive response after. 10ms")
 		}
@@ -137,7 +137,7 @@ func TestXReadBlockStream(t *testing.T) {
 		key = "xread-bl-$"
 		res_ch := startClient(1, "$")
 
-		newId := storage.StreamId{2, 3}
+		newId := storage.StreamID{2, 3}
 		_, err := c.Xadd(key, newId.String())
 		require.Nil(err)
 
@@ -145,7 +145,7 @@ func TestXReadBlockStream(t *testing.T) {
 		case res := <-res_ch:
 			require.Nil(res.err)
 			require.Len(res.response, 1)
-			require.Equal(newId, res.response[0].Id)
+			require.Equal(newId, res.response[0].ID)
 		case <-time.After(10 * time.Millisecond):
 			require.Fail("client with $ didn't receive response after. 10ms")
 		}

@@ -1,0 +1,90 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "go",
+            "args": [
+                "build",
+                "${workspaceFolder}/app/..."
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "dependsOn": [
+                "test"
+            ],
+            "problemMatcher": "$go",
+            "presentation": {
+                "echo": true,
+                "reveal": "never",
+                "revealProblems": "onProblem",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            }
+        },
+        {
+            "label": "test",
+            "type": "shell",
+            "command": "go",
+            "args": [
+                "test",
+                "${workspaceFolder}/app/..."
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": "$go",
+            "presentation": {
+                "echo": true,
+                "reveal": "never",
+                "revealProblems": "onProblem",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            }
+        },
+        {
+            "label": "codecrafters: test",
+            "type": "shell",
+            "command": "codecrafters test",
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "dedicated",
+                "showReuseMessage": true,
+                "clear": true
+            },
+            "dependsOn": [
+                "build"
+            ]
+        },
+                {
+            "label": "codecrafters: submit",
+            "type": "shell",
+            "command": "codecrafters submit",
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "dedicated",
+                "showReuseMessage": true,
+                "clear": true
+            },
+            "dependsOn": [
+                "build"
+            ]
+        }
+    ]
+}

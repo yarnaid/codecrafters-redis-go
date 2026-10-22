@@ -19,9 +19,9 @@ func (s XaddCommand) Execute(ctx context.Context, env *Env, _ *Session) (parser.
 	newKey, err := env.Coordinator.Xadd(s.Key, s.ID, s.Values...)
 	if err != nil {
 		switch err.(type) {
-		case storage.InvalidStreamIdSeq:
+		case storage.InvalidStreamIDSeq:
 			return parser.SimpleError("ERR The ID specified in XADD is equal or smaller than the target stream top item"), nil
-		case storage.ZeroStreamId:
+		case storage.ZeroStreamID:
 			return parser.SimpleError("ERR The ID specified in XADD must be greater than 0-0"), nil
 		default:
 			return nil, err

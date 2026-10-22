@@ -62,6 +62,7 @@ func DefaultRegistry() *Registry {
 		Spec{Name: "ZCARD", MinArgs: 1, MaxArgs: 1, Parse: parseZCard},
 		Spec{Name: "ZSCORE", MinArgs: 2, MaxArgs: 2, Parse: parseZScore},
 		Spec{Name: "ZREM", MinArgs: 2, MaxArgs: 2, Parse: parseZRem},
+		Spec{Name: "SETBIT", MinArgs: 3, MaxArgs: 3, Parse: parseSetBit},
 
 		Spec{Name: "COMMAND", MaxArgs: -1, Flags: FlagNotPropagate, Parse: parseCommand},
 	)
