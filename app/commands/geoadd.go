@@ -2,9 +2,17 @@ package commands
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"my-redis/app/parser"
+)
+
+const (
+	MinLong = -180.
+	MaxLong = 180.
+	MinLat  = -85.05112878
+	MaxLat  = 85.05112878
 )
 
 type GeoAddCommand struct {
@@ -15,6 +23,9 @@ type GeoAddCommand struct {
 var _ Command = (*GeoAddCommand)(nil)
 
 func (g *GeoAddCommand) Execute(ctx context.Context, env *Env, sess *Session) (parser.Serializable, error) {
+	if !g.validateCoord() {
+		return nil, fmt.Errorf("ERR invalid longitude,latitude pair %f,%f", g.Long, g.Lat)
+	}
 	return parser.Int(1), nil
 }
 
@@ -28,4 +39,8 @@ func parseGeoAdd(args []string) (Command, error) {
 		return nil, err
 	}
 	return &GeoAddCommand{long, lat, args[3]}, nil
+}
+
+func (g *GeoAddCommand) validateCoord() bool {
+	return g.Long <= MaxLong && g.Long >= MinLong && g.Lat >= MinLat && g.Lat <= MaxLat
 }
