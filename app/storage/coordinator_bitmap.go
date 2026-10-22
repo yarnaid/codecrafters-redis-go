@@ -11,10 +11,16 @@ func (c *Coordinator) GetBit(key string, offset int) (int, error) {
 		return 0, nil
 	}
 
-	b, ok := val.Value.(*bitmap.BitMap)
-	if !ok {
+	var b *bitmap.BitMap
+	switch v := val.Value.(type) {
+	case *bitmap.BitMap:
+		b = v
+	case string:
+		b = bitmap.FromString(v)
+	default:
 		return -1, &WrongTypeError{b, &bitmap.BitMap{}}
 	}
+
 	return b.Bit(offset), nil
 }
 
