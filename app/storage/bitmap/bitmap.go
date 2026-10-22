@@ -12,7 +12,7 @@ type BitMap struct {
 }
 
 func (b *BitMap) Bit(offset int) int {
-	if offset > b.len {
+	if offset >= b.len {
 		return 0
 	}
 	i, ofs := idx(offset)
