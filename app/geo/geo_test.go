@@ -47,8 +47,31 @@ func TestLoc_Coord(t *testing.T) {
 			l := geo.NewLoc(0, 0, tt.Score)
 			gotLat, got2Long := l.Coord()
 
-			require.InDelta(tt.Lat, gotLat, 1e-5)
-			require.InDelta(tt.Long, got2Long, 1e-5)
+			require.InDelta(tt.Lat, float64(gotLat), 1e-5)
+			require.InDelta(tt.Long, float64(got2Long), 1e-5)
 		})
 	}
+}
+
+func TestDistance(t *testing.T) {
+	tests := []struct {
+		name string // description of this test case
+		l1   *geo.Loc
+		l2   *geo.Loc
+		want float64
+	}{
+		{"simple", quantize(48.164271, 11.5030378), quantize(48.8584625, 2.2944692), 682477.7582},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require := require.New(t)
+			got := geo.Distance(*tt.l1, *tt.l2)
+			require.InDelta(tt.want, got, 1e-4)
+		})
+	}
+}
+
+func quantize(lat, lon float64) *geo.Loc {
+	s := geo.NewLoc(lat, lon, 0).Score()
+	return geo.NewLoc(0, 0, s)
 }

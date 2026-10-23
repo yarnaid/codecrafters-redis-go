@@ -6,12 +6,12 @@ func norm(v float64, mn float64, rng float64) float64 {
 	return normMax * (v - mn) / rng
 }
 
-func normLong(v float64) float64 {
-	return norm(v, MinLong, LongRange)
+func normLong(v grad) float64 {
+	return norm(float64(v), MinLong, LongRange)
 }
 
-func normLat(v float64) float64 {
-	return norm(v, MinLat, LatRange)
+func normLat(v grad) float64 {
+	return norm(float64(v), MinLat, LatRange)
 }
 
 func round(v float64) uint32 {

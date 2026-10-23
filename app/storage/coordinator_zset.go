@@ -101,7 +101,10 @@ func (c *Coordinator) ZRem(key, name string) (int, error) {
 func (c *Coordinator) ZScore(key, name string) (float64, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	return c.zScoreLocked(key, name)
+}
 
+func (c *Coordinator) zScoreLocked(key, name string) (float64, error) {
 	got, ok := c.backend.Get(key)
 	if !ok {
 		return -1, &NotFoundError{key}
