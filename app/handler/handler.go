@@ -37,7 +37,7 @@ func (h *handler) HandleConnection(ctx context.Context, conn net.Conn, br *bufio
 		br = bufio.NewReader(conn)
 	}
 	r := parser.NewReader(br) // one buffer shared by parser and watcher
-	sess := commands.NewSession(h.env.Repl.Role(), client.NewClient(conn))
+	sess := commands.NewSession(h.env.Repl.Role(), client.NewClient(conn), nil)
 	sess.Watch = watchDisconnect(conn, br)
 	if sess.Role == replication.MasterRole {
 		sess.Register = func() {

@@ -5,6 +5,7 @@ import (
 
 	"my-redis/app/client"
 	"my-redis/app/replication"
+	"my-redis/app/user"
 )
 
 type QueueItem struct {
@@ -28,17 +29,22 @@ type Session struct {
 	Client    *client.Client
 	Register  func()
 	Mode      Mode
+	User      *user.User
 
 	Detached bool                                                // stop replica conn handling, not close
 	Watch    func(ctx context.Context) (context.Context, func()) // cancel ctx on client disconnect
 }
 
-func NewSession(role replication.Role, c *client.Client) *Session {
+func NewSession(role replication.Role, c *client.Client, u *user.User) *Session {
+	if u == nil {
+		u = user.Default()
+	}
 	return &Session{
 		Queue:     make([]QueueItem, 0),
 		Role:      role,
 		WatchList: make([]WatchItem, 0),
 		Client:    c,
+		User:      u,
 	}
 }
 
