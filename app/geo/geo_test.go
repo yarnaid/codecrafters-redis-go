@@ -75,3 +75,9 @@ func quantize(lat, lon float64) *geo.Loc {
 	s := geo.NewLoc(lat, lon, 0).Score()
 	return geo.NewLoc(0, 0, s)
 }
+
+func TestDistanceBanana(t *testing.T) {
+	c := geo.NewLoc(5.155365715704531, 18.780403013929657, 0)
+	b := geo.NewLoc(69.56915778331016, 85.97559613275996, 0)
+	require.InDelta(t, 8.61e6, geo.Distance(*c, *b), 0.1e6)
+}

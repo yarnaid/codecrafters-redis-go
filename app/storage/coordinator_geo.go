@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"log/slog"
+
 	"my-redis/app/geo"
 	"my-redis/app/zset"
 )
@@ -30,7 +32,8 @@ func (c *Coordinator) GeoSearch(key string, lon, lat, rad float64) ([]string, er
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	interest := geo.NewLoc(lon, lat, 0)
+	interest := geo.NewLoc(lat, lon, 0)
+	slog.Debug("[GeoSearch]", "center", interest, "lat", lat, "lon", lon)
 	res := []string{}
 	v, ok := c.backend.Get(key)
 	if !ok {
@@ -43,7 +46,9 @@ func (c *Coordinator) GeoSearch(key string, lon, lat, rad float64) ([]string, er
 
 	for name, score := range set.Values() {
 		loc := geo.NewLoc(0, 0, uint64(score))
-		if geo.Distance(*interest, *loc) < rad {
+		d := geo.Distance(*interest, *loc)
+		// slog.Debug("[GeoSearch]", "loc", loc, "dist", d, "rad", rad)
+		if d <= rad {
 			res = append(res, name)
 		}
 	}

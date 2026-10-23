@@ -2,7 +2,6 @@ package geo
 
 import (
 	"fmt"
-	"log/slog"
 	"math"
 )
 
@@ -76,13 +75,14 @@ func (l *Loc) Validate() bool {
 }
 
 func Distance(l1, l2 Loc) float64 {
-	lat1, long1 := l1.Coord()
-	lat2, long2 := l2.Coord()
-	dLat := lat2.toRad() - lat1.toRad()
-	dLon := long2.toRad() - long1.toRad()
-	slog.Debug("[Distance]", "dlat", dLat, "dLon", dLon)
-	return 2 * rEarth * math.Asin(math.Sqrt(haversine(dLat)+
-		math.Cos(l1.lat.toRad().v())*math.Cos(l2.lat.toRad().v())*haversine(dLon)))
+	lat1, lat2 := l1.lat.toRad(), l2.lat.toRad()
+	dLat := lat2 - lat1
+	dLon := l2.long.toRad() - l1.long.toRad()
+
+	a := haversine(dLat) + math.Cos(lat1.v())*math.Cos(lat2.v())*haversine(dLon)
+	// Floating-point error can push a slightly above 1; clamp, don't mask.
+	a = math.Min(1, math.Max(0, a))
+	return 2 * rEarth * math.Asin(math.Sqrt(a))
 }
 
 func haversine(a rad) float64 {
