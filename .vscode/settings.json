@@ -25,6 +25,7 @@
         "ZRANGE",
         "ZRANK",
         "ZREM",
-        "ZSCORE"
+        "ZSCORE",
+        "zset"
     ]
 }

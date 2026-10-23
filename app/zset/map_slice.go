@@ -3,6 +3,7 @@ package zset
 import (
 	"cmp"
 	"iter"
+	"maps"
 	"slices"
 )
 
@@ -88,4 +89,8 @@ func (z *ZSetMapSlice) Remove(key string) bool {
 	z.vals = slices.Delete(z.vals, i, i+1)
 	delete(z.Map, key)
 	return true
+}
+
+func (z *ZSetMapSlice) Values() iter.Seq2[string, float64] {
+	return maps.All(z.Map)
 }

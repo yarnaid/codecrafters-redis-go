@@ -15,4 +15,5 @@ type ZSet interface {
 	Count() int
 	Range(int, int) iter.Seq[string]
 	Rank(string) (int, bool)
+	Values() iter.Seq2[string, float64]
 }
