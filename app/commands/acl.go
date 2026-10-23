@@ -25,7 +25,7 @@ func (a *ACLCommand) Execute(ctx context.Context, env *Env, sess *Session) (pars
 }
 
 func parseACL(args []string) (Command, error) {
-	switch strings.ToUpper(args[1]) {
+	switch strings.ToUpper(args[0]) {
 	case "WHOAMI":
 	case "GETUSER":
 	default:
