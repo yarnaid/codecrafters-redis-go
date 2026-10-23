@@ -19,7 +19,10 @@ func (a *ACLCommand) Execute(ctx context.Context, env *Env, sess *Session) (pars
 	case "WHOAMI":
 		return parser.BulkString("default"), nil
 	case "GETUSER":
-		return parser.Array[parser.Serializable]{parser.BulkString("flags"), parser.StringsToArray(sess.User.Flags.List()...)}, nil
+		return parser.Array[parser.Serializable]{
+			parser.BulkString("flags"), parser.StringsToArray(sess.User.Flags.List()...),
+			parser.BulkString("passwords"), parser.StringsToArray(),
+		}, nil
 	}
 	return nil, &InvalidCommandError{}
 }
