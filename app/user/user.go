@@ -3,6 +3,7 @@ package user
 
 import (
 	"crypto/sha256"
+	"fmt"
 	"sync"
 )
 
@@ -27,6 +28,6 @@ func (u *User) SetPassword(pswd string) {
 	defer u.mu.Unlock()
 	h := sha256.New()
 	h.Write([]byte(pswd))
-	u.PasswdHash = string(h.Sum(nil))
+	u.PasswdHash = fmt.Sprintf("%x", h.Sum(nil))
 	u.Flags &^= FlagNoPass.fs()
 }
