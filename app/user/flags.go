@@ -43,3 +43,7 @@ func (f flagSet) List() []string {
 	}
 	return res
 }
+
+func (f flagSet) Has(flg flag) bool {
+	return f&flg.fs() == flg.fs()
+}
