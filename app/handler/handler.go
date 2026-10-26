@@ -64,6 +64,11 @@ func (h *handler) HandleConnection(ctx context.Context, conn net.Conn, br *bufio
 			h.logReadError(err)
 			return
 		}
+		if sess.User == nil {
+			response, _ := parser.SimpleError("NOAUTH Authentication required.").Serialize()
+			sess.Client.Reply(response)
+			continue
+		}
 		if len(arr) == 0 {
 			h.logger.Warn("got empty commands array from client without error")
 		}

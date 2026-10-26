@@ -9,6 +9,7 @@
         "LPOP",
         "LPUSH",
         "LRANGE",
+        "NOAUTH",
         "PSYNC",
         "REPLCONF",
         "replicaof",

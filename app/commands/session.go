@@ -36,7 +36,7 @@ type Session struct {
 }
 
 func NewSession(role replication.Role, c *client.Client, u *user.User) *Session {
-	if u == nil {
+	if u == nil && user.Default().Flags.Has(user.FlagNoPass) {
 		u = user.Default()
 	}
 	return &Session{
