@@ -23,11 +23,20 @@ func Default() *User {
 	return &defaultUser
 }
 
+func hash(s string) string {
+	h := sha256.New()
+	h.Write([]byte(s))
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
 func (u *User) SetPassword(pswd string) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
-	h := sha256.New()
-	h.Write([]byte(pswd))
-	u.PasswdHash = fmt.Sprintf("%x", h.Sum(nil))
+	u.PasswdHash = hash(pswd)
 	u.Flags &^= FlagNoPass.fs()
+}
+
+func (u *User) CheckPassword(pswd string) bool {
+	h := hash(pswd)
+	return h == u.PasswdHash
 }

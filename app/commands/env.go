@@ -11,6 +11,7 @@ import (
 	"my-redis/app/config"
 	"my-redis/app/replication"
 	"my-redis/app/storage"
+	"my-redis/app/user"
 )
 
 type Env struct {
@@ -21,6 +22,7 @@ type Env struct {
 	Cfg         *config.Config
 	Wg          *sync.WaitGroup
 	Broker      *broker.Broker
+	Users       map[string]*user.User
 
 	ManifestChan chan string
 	Started      bool
@@ -35,6 +37,7 @@ func NewEnv(coord *storage.Coordinator, repl *replication.Manager, cfg *config.C
 		Cfg:         cfg,
 		Wg:          wg,
 		Broker:      broker.New(),
+		Users:       map[string]*user.User{"default": user.Default()},
 	}
 }
 

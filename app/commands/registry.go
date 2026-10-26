@@ -72,6 +72,7 @@ func DefaultRegistry() *Registry {
 		Spec{Name: "GEODIST", MinArgs: 3, MaxArgs: 3, Parse: parseGeoDist},
 		Spec{Name: "GEOSEARCH", MinArgs: 7, MaxArgs: 7, Parse: parseGeoSearch},
 		Spec{Name: "ACL", MinArgs: 1, MaxArgs: 7, Parse: parseACL},
+		Spec{Name: "AUTH", MinArgs: 2, MaxArgs: 2, Parse: parseAuth},
 
 		Spec{Name: "COMMAND", MaxArgs: -1, Flags: FlagNotPropagate, Parse: parseCommand},
 	)
