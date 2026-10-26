@@ -64,7 +64,7 @@ func (h *handler) HandleConnection(ctx context.Context, conn net.Conn, br *bufio
 			h.logReadError(err)
 			return
 		}
-		if sess.User == nil {
+		if sess.User == nil && strings.ToUpper(arr[0][0]) != "AUTH" {
 			response, _ := parser.SimpleError("NOAUTH Authentication required.").Serialize()
 			sess.Client.Reply(response)
 			continue
